@@ -1,0 +1,7 @@
+.settings/
+bin/
+.classpath
+.project
+doc/
+65536.txt
+bigfile.txt

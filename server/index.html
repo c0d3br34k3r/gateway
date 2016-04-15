@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<html ng-app="app">
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+		<script type="text/javascript">
+		
+			var app = angular.module('app', []);
+
+			app.controller('Controller', function($scope, $http) {
+				
+				$scope.post = function() {
+					$http.post('index.html', 'testing').then(function(thing) {
+						alert('<' + thing.data + '>');
+					}, function() {
+						alert('failure');
+					});
+				}
+				
+			});
+			
+		</script>
+		<title>http test</title>
+	</head>
+	<body ng-controller="Controller">
+		<button ng-click="post()">POST</button>
+	</body>
+</html>
