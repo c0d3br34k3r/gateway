@@ -3,13 +3,13 @@ package websocket;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class Websocket {
+public class Websocket implements Closeable {
 
 	private final InputStream in;
 	private final OutputStream out;
@@ -71,7 +71,7 @@ public class Websocket {
 				firstOpcode = opcode;
 			}
 			int payloadSize = (int) readLength();
-			
+
 			// resize buffer if necessary
 			int minCapacity = count + payloadSize;
 			if (minCapacity > buf.length) {
@@ -79,7 +79,7 @@ public class Websocket {
 						? minCapacity
 						: Math.max(buf.length << 1, minCapacity));
 			}
-			
+
 			byte[] masks = readBytes(NUM_MASKS);
 			readBytes(buf, count, payloadSize);
 			for (int i = 0; i < payloadSize; i++) {
@@ -132,32 +132,41 @@ public class Websocket {
 	}
 
 	public void send(String message) throws IOException {
-		write(true, TEXT, message);
+		write(TEXT, message);
 	}
 
 	public void send(byte[] message) throws IOException {
-		write(true, BINARY, message);
+		write(BINARY, message);
 	}
 
 	public void close(int code) throws IOException {
 		close(code, "");
 	}
+	
+	public void closeWithoutCode() throws IOException {
+		write(CLOSE, new byte[0]);
+	}
 
+	public void close(byte[] message) throws IOException {
+		write(CLOSE, message);
+	}
+	
 	public void close(int code, String message) throws IOException {
 		byte[] messageBytes = message.getBytes(UTF_8);
 		byte[] closeBytes = new byte[2 + messageBytes.length];
 		closeBytes[0] = (byte) ((code & 0xFF00) >> Byte.SIZE);
 		closeBytes[1] = (byte) (code & 0xFF);
 		System.arraycopy(messageBytes, 0, closeBytes, 2, messageBytes.length);
-		write(true, CLOSE, closeBytes);
+		write(CLOSE, closeBytes);
+		close();
 	}
 
 	public void ping(String message) throws IOException {
-		write(true, PING, message);
+		write(PING, message);
 	}
-
+	
 	public void pong(String message) throws IOException {
-		write(true, PONG, message);
+		write(PONG, message);
 	}
 
 	public void sendFrame(boolean fin, int opcode, String payload) throws IOException {
@@ -170,6 +179,14 @@ public class Websocket {
 
 	private void write(boolean fin, int opcode, String message) throws IOException {
 		write(fin, opcode, message.getBytes(UTF_8));
+	}
+
+	private void write(int opcode, String message) throws IOException {
+		write(opcode, message.getBytes(UTF_8));
+	}
+
+	private void write(int opcode, byte[] message) throws IOException {
+		write(true, opcode, message);
 	}
 
 	private void write(boolean fin, int opcode, byte[] message) throws IOException {
@@ -198,6 +215,11 @@ public class Websocket {
 		}
 	}
 
+	@Override public void close() throws IOException {
+		in.close();
+		out.close();
+	}
+
 	public static class Message {
 
 		private final byte[] data;
@@ -215,7 +237,7 @@ public class Websocket {
 		}
 
 		public String text() {
-			return new String(data, 0, count, StandardCharsets.UTF_8);
+			return new String(data, 0, count, UTF_8);
 		}
 
 		public byte[] binary() {
@@ -223,13 +245,18 @@ public class Websocket {
 		}
 
 		public int closeCode() {
+			if (count == 0) {
+				return -1;
+			}
 			return ((data[0] & 0xFF) << Byte.SIZE) | (data[1] & 0xFF);
 		}
-		
+
 		public String closeMessage() {
-			return new String(data, 2, count - 2, StandardCharsets.UTF_8);
+			if (count == 0) {
+				return null;
+			}
+			return new String(data, 2, count - 2, UTF_8);
 		}
 	}
-
 
 }

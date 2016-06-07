@@ -1,6 +1,5 @@
 package server;
 
-import java.nio.file.Path;
 import java.util.Map;
 
 import com.google.common.collect.Multimap;

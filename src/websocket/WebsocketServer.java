@@ -3,6 +3,7 @@ package websocket;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
 import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,7 +17,7 @@ import com.google.common.net.HttpHeaders;
 import server.HttpInput;
 import server.HttpStatus;
 
-public class WebsocketServer {
+public class WebsocketServer implements Closeable {
 
 	private final ServerSocket server;
 
@@ -97,6 +98,14 @@ public class WebsocketServer {
 		@Override public void consume(String line) {
 			lines.add(line);
 		}
+	}
+
+	@Override public void close() throws IOException {
+		server.close();
+	}
+
+	public boolean isClosed() {
+		return server.isClosed();
 	}
 
 }
