@@ -6,7 +6,9 @@ import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
 
-public class QueryParser {
+public final class QueryParser {
+	
+	private QueryParser() {}
 
 	public static Map<String, String> toMap(String query) {
 		final ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();

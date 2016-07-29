@@ -1,26 +1,26 @@
 package server;
 
+import java.io.InputStream;
 import java.util.Map;
 
 import com.google.common.collect.Multimap;
-import com.google.common.io.ByteSource;
 
 public class HttpRequest {
 
 	// TODO: multimaps
-	
+
 	private final HttpMethod method;
 	private final String requestUri;
 	private final String httpVersion;
 	private final Map<String, String> headers;
-	private final ByteSource content;
+	private final InputStream content;
 
-	HttpRequest(HttpMethod method, 
+	HttpRequest(HttpMethod method,
 			String requestUri,
 			Multimap<String, String> queryParameters,
 			String httpVersion,
 			Map<String, String> headers,
-			ByteSource content) {
+			InputStream content) {
 		this.method = method;
 		this.requestUri = requestUri;
 		this.httpVersion = httpVersion;
@@ -43,12 +43,12 @@ public class HttpRequest {
 	public String getHeader(String key) {
 		return headers.get(key);
 	}
-	
+
 	public Map<String, String> headers() {
 		return headers;
 	}
 
-	public ByteSource content() {
+	public InputStream content() {
 		return content;
 	}
 

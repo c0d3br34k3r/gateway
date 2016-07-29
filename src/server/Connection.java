@@ -7,7 +7,7 @@ public abstract class Connection {
 	protected void init(HttpRequest request) {}
 
 	protected void onGet(HttpRequest request, HttpResponse response) throws IOException {
-		response.send404();
+		response.setStatus(HttpStatus._400_BAD_REQUEST).send();
 	}
 	
 	protected void onPost(HttpRequest request, HttpResponse response) throws IOException {

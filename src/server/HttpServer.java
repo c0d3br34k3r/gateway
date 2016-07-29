@@ -2,6 +2,7 @@ package server;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -19,7 +20,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableMultimap.Builder;
 import com.google.common.collect.Multimap;
-import com.google.common.io.ByteSource;
 import com.google.common.net.HttpHeaders;
 
 public abstract class HttpServer {
@@ -41,7 +41,6 @@ public abstract class HttpServer {
 	}
 
 	private static final Splitter REQUEST = Splitter.on(' ');
-	private static final byte[] NO_CONTENT = new byte[0];
 	private static final Splitter QUERY_PARAMETERS = Splitter.on('&');
 
 	private class Connection implements Runnable {
@@ -77,13 +76,13 @@ public abstract class HttpServer {
 
 					Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 					readHeaders(headers);
-					byte[] content = readContent(headers);
+					InputStream content = getContent(headers);
 					handle(new HttpRequest(HttpMethod.valueOf(parts.get(0)),
 							requestUri,
 							queryParameters,
 							parts.get(2),
 							Collections.unmodifiableMap(headers),
-							ByteSource.wrap(content)), new HttpResponse(out));
+							content), new HttpResponse(out));
 					System.out.println();
 				}
 			} catch (IOException e) {
@@ -117,18 +116,16 @@ public abstract class HttpServer {
 			}
 		}
 
-		private byte[] readContent(Map<String, String> headers) throws IOException {
+		private InputStream getContent(Map<String, String> headers) throws IOException {
 			String contentLength = headers.get(HttpHeaders.CONTENT_LENGTH);
 			if (contentLength != null) {
-				return in.readContent(Integer.parseInt(contentLength));
+				return in.streamContent(Integer.parseInt(contentLength));
 			}
 			String encoding = headers.get(HttpHeaders.TRANSFER_ENCODING);
 			if (encoding != null && encoding.equalsIgnoreCase("chunked")) {
-				byte[] content = in.readChunked();
-				readHeaders(headers);
-				return content;
+				return in.streamChunked();
 			}
-			return NO_CONTENT;
+			throw new IllegalStateException();
 		}
 	}
 

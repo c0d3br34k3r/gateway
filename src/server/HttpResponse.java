@@ -1,7 +1,9 @@
 package server;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -18,7 +20,7 @@ public class HttpResponse {
 
 	private HttpStatus status;
 	private Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-	private ContentStrategy strategy = NO_CONTENT;
+	private InputStream content = null;
 	private final OutputStream out;
 
 	HttpResponse(OutputStream out) {
@@ -27,11 +29,6 @@ public class HttpResponse {
 
 	public HttpResponse setStatus(HttpStatus status) {
 		this.status = status;
-		return this;
-	}
-
-	public HttpResponse setHeader(String key, Object value) {
-		setHeader(key, value.toString());
 		return this;
 	}
 
@@ -48,27 +45,25 @@ public class HttpResponse {
 		return setContent(content.getBytes(charset));
 	}
 
-	public HttpResponse setContent(final File file) {
-		setHeader(HttpHeaders.CONTENT_LENGTH, file.length());
-		strategy = new ContentStrategy() {
-
-			@Override public void writeTo(OutputStream out) throws IOException {
-				try (InputStream content = new FileInputStream(file)) {
-					ByteStreams.copy(content, out);
-				}
-			}
-		};
+	public HttpResponse setContent(File file) {
+		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(file.length()));
+		try {
+			content = new FileInputStream(file);
+		} catch (FileNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
 		return this;
 	}
 
-	public HttpResponse setContent(final byte[] content) {
-		setHeader(HttpHeaders.CONTENT_LENGTH, content.length);
-		strategy = new ContentStrategy() {
+	public HttpResponse setContent(byte[] bytes) {
+		setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(bytes.length));
+		content = new ByteArrayInputStream(bytes);
+		return this;
+	}
 
-			@Override public void writeTo(OutputStream out) throws IOException {
-				out.write(content);
-			}
-		};
+	public HttpResponse setContent(InputStream stream, long length) {
+		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(length));
+		content = ByteStreams.limit(stream, length);
 		return this;
 	}
 
@@ -85,23 +80,10 @@ public class HttpResponse {
 		}
 		response.append(CRLF);
 		out.write(response.toString().getBytes(StandardCharsets.US_ASCII));
-		strategy.writeTo(out);
+		if (content != null) {
+			ByteStreams.copy(content, out);
+		}
 		out.flush();
-	}
-
-	public void send404() throws IOException {
-		status = HttpStatus._404_NOT_FOUND;
-		send();
-	}
-
-	private static final ContentStrategy NO_CONTENT = new ContentStrategy() {
-
-		@Override public void writeTo(OutputStream out) {}
-	};
-
-	private interface ContentStrategy {
-
-		void writeTo(OutputStream out) throws IOException;
 	}
 
 }

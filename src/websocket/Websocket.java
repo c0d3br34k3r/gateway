@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 
+import com.google.common.io.ByteStreams;
+
 public class Websocket implements Closeable {
 
 	private final InputStream in;
@@ -50,28 +52,28 @@ public class Websocket implements Closeable {
 	// No real max for large messages
 
 	public Message read() throws IOException {
-		byte[] buf = new byte[1024];
-		int count = 0;
-		int firstOpcode = -1;
-		boolean fin;
-		do {
-			int finOpcode = in.read();
+		int finOpcode = in.read();
+		if (finOpcode == -1) {
+			return null;
+		}
+		boolean fin = (finOpcode & FIN) == FIN;
+		int firstOpcode = finOpcode & OPCODE_MASK;
+		int payloadSize = readLength();
+		int count = payloadSize;
+		byte[] buf = new byte[fin ? payloadSize : payloadSize << 2];
+		readPayload(buf, 0, payloadSize);
+
+		while (!fin) {
+			finOpcode = in.read();
 			if (finOpcode == -1) {
-				if (firstOpcode == -1) {
-					return null;
-				}
 				throw new IOException();
 			}
 			fin = (finOpcode & FIN) == FIN;
-			int opcode = finOpcode & OPCODE_MASK;
-			if (firstOpcode == -1 ^ opcode != CONTINUATION) {
+			if ((finOpcode & OPCODE_MASK) != CONTINUATION) {
 				throw new IOException();
 			}
-			if (firstOpcode == -1) {
-				firstOpcode = opcode;
-			}
-			int payloadSize = (int) readLength();
-
+			payloadSize = readLength();
+			
 			// resize buffer if necessary
 			int minCapacity = count + payloadSize;
 			if (minCapacity > buf.length) {
@@ -79,18 +81,21 @@ public class Websocket implements Closeable {
 						? minCapacity
 						: Math.max(buf.length << 1, minCapacity));
 			}
-
-			byte[] masks = readBytes(NUM_MASKS);
-			readBytes(buf, count, payloadSize);
-			for (int i = 0; i < payloadSize; i++) {
-				buf[count + i] ^= masks[i % NUM_MASKS];
-			}
+			readPayload(buf, count, payloadSize);
 			count += payloadSize;
-		} while (!fin);
+		}
 		return new Message(buf, count, firstOpcode);
 	}
 
-	private long readLength() throws IOException {
+	private void readPayload(byte[] buf, int off, int len) throws IOException {
+		byte[] masks = readBytes(NUM_MASKS);
+		ByteStreams.readFully(in, buf, off, len);
+		for (int i = 0; i < len; i++) {
+			buf[off + i] ^= masks[i % NUM_MASKS];
+		}
+	}
+
+	private int readLength() throws IOException {
 		int lengthCode = in.read() & LENGTH_MASK;
 		int bytes;
 		switch (lengthCode) {
@@ -103,7 +108,7 @@ public class Websocket implements Closeable {
 			default:
 				return lengthCode;
 		}
-		return readLong(bytes);
+		return (int) readLong(bytes);
 	}
 
 	private long readLong(int bytes) throws IOException {
@@ -116,19 +121,8 @@ public class Websocket implements Closeable {
 
 	private byte[] readBytes(int count) throws IOException {
 		byte[] buf = new byte[count];
-		readBytes(buf, 0, buf.length);
+		ByteStreams.readFully(in, buf);
 		return buf;
-	}
-
-	private void readBytes(byte[] buf, int offset, int length) throws IOException {
-		int pos = 0;
-		do {
-			int read = in.read(buf, offset + pos, length - pos);
-			if (read == -1) {
-				throw new IOException();
-			}
-			pos += read;
-		} while (pos < length);
 	}
 
 	public void send(String message) throws IOException {
@@ -142,15 +136,11 @@ public class Websocket implements Closeable {
 	public void close(int code) throws IOException {
 		close(code, "");
 	}
-	
+
 	public void closeWithoutCode() throws IOException {
 		write(CLOSE, new byte[0]);
 	}
 
-	public void close(byte[] message) throws IOException {
-		write(CLOSE, message);
-	}
-	
 	public void close(int code, String message) throws IOException {
 		byte[] messageBytes = message.getBytes(UTF_8);
 		byte[] closeBytes = new byte[2 + messageBytes.length];
@@ -158,13 +148,12 @@ public class Websocket implements Closeable {
 		closeBytes[1] = (byte) (code & 0xFF);
 		System.arraycopy(messageBytes, 0, closeBytes, 2, messageBytes.length);
 		write(CLOSE, closeBytes);
-		close();
 	}
 
 	public void ping(String message) throws IOException {
 		write(PING, message);
 	}
-	
+
 	public void pong(String message) throws IOException {
 		write(PONG, message);
 	}
@@ -252,7 +241,7 @@ public class Websocket implements Closeable {
 		}
 
 		public String closeMessage() {
-			if (count == 0) {
+			if (count <= 2) {
 				return null;
 			}
 			return new String(data, 2, count - 2, UTF_8);
