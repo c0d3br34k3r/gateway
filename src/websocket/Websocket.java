@@ -56,11 +56,13 @@ public class Websocket implements Closeable {
 		if (finOpcode == -1) {
 			return null;
 		}
+
+		// most messages will only be 1 frame
 		boolean fin = (finOpcode & FIN) == FIN;
 		int firstOpcode = finOpcode & OPCODE_MASK;
 		int payloadSize = readLength();
 		int count = payloadSize;
-		byte[] buf = new byte[fin ? payloadSize : payloadSize << 2];
+		byte[] buf = new byte[fin ? payloadSize : payloadSize * 4];
 		readPayload(buf, 0, payloadSize);
 
 		while (!fin) {
@@ -70,16 +72,16 @@ public class Websocket implements Closeable {
 			}
 			fin = (finOpcode & FIN) == FIN;
 			if ((finOpcode & OPCODE_MASK) != CONTINUATION) {
-				throw new IOException();
+				// throw new IOException();
 			}
 			payloadSize = readLength();
-			
+
 			// resize buffer if necessary
 			int minCapacity = count + payloadSize;
 			if (minCapacity > buf.length) {
 				buf = Arrays.copyOf(buf, fin
 						? minCapacity
-						: Math.max(buf.length << 1, minCapacity));
+						: Math.max(buf.length * 2, minCapacity));
 			}
 			readPayload(buf, count, payloadSize);
 			count += payloadSize;
@@ -126,11 +128,11 @@ public class Websocket implements Closeable {
 	}
 
 	public void send(String message) throws IOException {
-		write(TEXT, message);
+		sendSingleFrame(TEXT, message);
 	}
 
 	public void send(byte[] message) throws IOException {
-		write(BINARY, message);
+		sendSingleFrame(BINARY, message);
 	}
 
 	public void close(int code) throws IOException {
@@ -138,7 +140,7 @@ public class Websocket implements Closeable {
 	}
 
 	public void closeWithoutCode() throws IOException {
-		write(CLOSE, new byte[0]);
+		sendSingleFrame(CLOSE, new byte[0]);
 	}
 
 	public void close(int code, String message) throws IOException {
@@ -147,38 +149,31 @@ public class Websocket implements Closeable {
 		closeBytes[0] = (byte) ((code & 0xFF00) >> Byte.SIZE);
 		closeBytes[1] = (byte) (code & 0xFF);
 		System.arraycopy(messageBytes, 0, closeBytes, 2, messageBytes.length);
-		write(CLOSE, closeBytes);
+		sendSingleFrame(CLOSE, closeBytes);
 	}
 
 	public void ping(String message) throws IOException {
-		write(PING, message);
+		sendSingleFrame(PING, message);
 	}
 
 	public void pong(String message) throws IOException {
-		write(PONG, message);
+		sendSingleFrame(PONG, message);
 	}
 
-	public void sendFrame(boolean fin, int opcode, String payload) throws IOException {
-		write(fin, opcode, payload);
+	private void sendSingleFrame(int opcode, String message) throws IOException {
+		sendSingleFrame(opcode, message.getBytes(UTF_8));
 	}
 
-	public void sendFrame(boolean fin, int opcode, byte[] payload) throws IOException {
-		write(fin, opcode, payload);
+	private void sendSingleFrame(int opcode, byte[] message) throws IOException {
+		sendFrame(true, opcode, message);
 	}
 
-	private void write(boolean fin, int opcode, String message) throws IOException {
-		write(fin, opcode, message.getBytes(UTF_8));
+	public void sendFrame(boolean fin, int opcode, byte[] message) throws IOException {
+		sendFrame(fin, opcode, message, 0, message.length);
 	}
 
-	private void write(int opcode, String message) throws IOException {
-		write(opcode, message.getBytes(UTF_8));
-	}
-
-	private void write(int opcode, byte[] message) throws IOException {
-		write(true, opcode, message);
-	}
-
-	private void write(boolean fin, int opcode, byte[] message) throws IOException {
+	public void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
+			throws IOException {
 		out.write((fin ? FIN : 0) | opcode);
 		int lengthCode;
 		int lengthBytes;
@@ -193,8 +188,8 @@ public class Websocket implements Closeable {
 			lengthBytes = LARGE_LENGTH_BYTES;
 		}
 		out.write(lengthCode);
-		writeAsBytes(message.length, lengthBytes);
-		out.write(message);
+		writeAsBytes(len, lengthBytes);
+		out.write(message, off, len);
 		out.flush();
 	}
 
