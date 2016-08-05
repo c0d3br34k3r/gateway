@@ -2,9 +2,9 @@ package websocket;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
-import java.io.BufferedOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
@@ -71,10 +71,10 @@ public class WebsocketServer implements Closeable {
 				+ HttpHeaders.CONNECTION + ": Upgrade" + CRLF
 				+ "Sec-WebSocket-Accept: " + acceptKey + CRLF
 				+ CRLF;
-		BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
+		OutputStream out = socket.getOutputStream();
 		out.write(reply.getBytes(US_ASCII));
 		out.flush();
-		return in.websocket(out);
+		return new Websocket(socket);
 	}
 
 	private interface LineConsumer {

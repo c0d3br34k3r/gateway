@@ -1,28 +1,22 @@
 package server;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.google.common.io.ByteStreams;
-
-import websocket.Websocket;
 
 /**
  * Reads HTTP content from an InputStream.
  */
 public class HttpInput {
 
-	private BufferedInputStream in;
-
-	public HttpInput(BufferedInputStream in) {
-		this.in = in;
-	}
+	private InputStream in;
 
 	public HttpInput(InputStream in) {
-		this.in = new BufferedInputStream(in);
+		this.in = in;
 	}
 
 	public String readLine() throws IOException {
@@ -31,18 +25,36 @@ public class HttpInput {
 		for (;;) {
 			int b = in.read();
 			if (b == '\r') {
-				in.mark(1);
-				int b2 = in.read();
-				if (b2 == '\n') {
-					String line = lineBuilder.toString(StandardCharsets.US_ASCII);
-					lineBuilder.reset();
-					return line;
+				if (in.read() != '\n') {
+					throw new IOException();
 				}
-				in.reset();
+				return lineBuilder.toString(StandardCharsets.US_ASCII);
 			} else if (b == -1) {
 				throw new IOException();
 			}
 			lineBuilder.write(b);
+		}
+	}
+
+	public Map<String, String> readHeaders() throws IOException {
+		Map<String, String> headers = new LinkedHashMap<>();
+		readHeaders(headers);
+		return headers;
+	}
+
+	public void readHeaders(Map<String, String> headers) throws IOException {
+		String line;
+		for (;;) {
+			line = readLine();
+			if (line.isEmpty()) {
+				return;
+			}
+			int separator = line.indexOf(':');
+			if (separator == -1) {
+				throw new IOException("Malformed header: " + line);
+			}
+			headers.put(line.substring(0, separator).trim(),
+					line.substring(separator + 1).trim());
 		}
 	}
 
@@ -52,10 +64,6 @@ public class HttpInput {
 
 	public InputStream streamChunked() throws IOException {
 		return new ChunkedInputStream();
-	}
-
-	public Websocket websocket(BufferedOutputStream out) {
-		return new Websocket(in, out);
 	}
 
 	private class ChunkedInputStream extends InputStream {
@@ -111,7 +119,7 @@ public class HttpInput {
 				nextChunk();
 			}
 		}
-		
+
 		private void nextChunk() throws IOException {
 			readCrlf();
 			remaining = Integer.parseInt(readLine(), 16);
