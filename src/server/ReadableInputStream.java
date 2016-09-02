@@ -16,9 +16,9 @@ public abstract class ReadableInputStream extends InputStream {
 	public String getText(Charset charset) throws IOException {
 		return new String(getBytes(), charset);
 	}
-	
+
 	public String getText() throws IOException {
-		return new String(getBytes(), StandardCharsets.UTF_8);
+		return getText(StandardCharsets.UTF_8);
 	}
 
 }

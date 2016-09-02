@@ -3,9 +3,6 @@ package server;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-import com.google.common.io.ByteStreams;
 
 public class ContentTest {
 
@@ -25,7 +22,7 @@ public class ContentTest {
 			System.out.println("LINE: " + line);
 		}
 
-		System.out.println(new String(ByteStreams.toByteArray(http.streamChunked()), StandardCharsets.UTF_8));
+		System.out.println(http.streamChunked().getText());
 		System.out.println(stream.read());
 	}
 

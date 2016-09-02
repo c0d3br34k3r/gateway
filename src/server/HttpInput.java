@@ -58,15 +58,15 @@ public class HttpInput {
 		}
 	}
 
-	public InputStream streamContent(int count) {
+	public ReadableInputStream streamContent(int count) {
 		return new ContentInputStream(count);
 	}
 
-	public InputStream streamChunked() throws IOException {
+	public ReadableInputStream streamChunked() throws IOException {
 		return new ChunkedInputStream();
 	}
 
-	public class ContentInputStream extends InputStream {
+	public class ContentInputStream extends ReadableInputStream {
 
 		private long remaining;
 
@@ -113,7 +113,7 @@ public class HttpInput {
 
 	}
 
-	private class ChunkedInputStream extends InputStream {
+	private class ChunkedInputStream extends ReadableInputStream {
 
 		private long remaining;
 		private boolean end = false;

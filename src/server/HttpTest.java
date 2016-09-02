@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
@@ -14,16 +12,6 @@ public class HttpTest extends HttpServer {
 
 	public HttpTest() throws IOException {
 		super(8080);
-	}
-
-	private static final Path ROOT;
-
-	static {
-		try {
-			ROOT = Paths.get("./server").toRealPath();
-		} catch (IOException e) {
-			throw new IllegalArgumentException();
-		}
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -49,6 +37,7 @@ public class HttpTest extends HttpServer {
 			case "/index.html":
 				status = HttpStatus._200_OK;
 				response.setContent(new File("index.html"));
+				response.addCookie(new Cookie("SID", "1234"));
 				break;
 			case "/post-it.png":
 				status = HttpStatus._304_NOT_MODIFIED;
@@ -57,7 +46,7 @@ public class HttpTest extends HttpServer {
 				// 19:13:02 GMT");
 				// response.setHeader(HttpHeaders.LAST_MODIFIED, "Sun, 14 Jul
 				// 2013 13:05:23 GMT");
-				response.setHeader(HttpHeaders.ETAG, "\"64d79db1fee1513ead9b6b48064b10ee\"");
+				response.setHeader(HttpHeaders.ETAG, "64d79db1fee1513ead9b6b48064b10ee");
 				// response.setContent(new File("post-it.png"));
 				break;
 			default:
@@ -77,10 +66,6 @@ public class HttpTest extends HttpServer {
 		response.setStatus(HttpStatus._200_OK);
 		response.setContent(reverse);
 		response.send();
-	}
-
-	private static boolean isLegalResource(File file) throws IOException {
-		return file.toPath().toRealPath().startsWith(ROOT);
 	}
 
 }

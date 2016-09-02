@@ -40,7 +40,6 @@ public abstract class HttpServer {
 		}
 	}
 
-	private static final Splitter REQUEST = Splitter.on(' ');
 	private static final Splitter QUERY_PARAMETERS = Splitter.on('&');
 
 	private class Connection implements Runnable {
@@ -63,8 +62,11 @@ public abstract class HttpServer {
 						break;
 					}
 					System.out.println(requestLine);
-					List<String> parts = REQUEST.splitToList(requestLine);
-					String requestUri = parts.get(1);
+					int sep1 = requestLine.indexOf(' ');
+					String method = requestLine.substring(0, sep1);
+					int sep2 = requestLine.indexOf(' ', sep1 + 1);
+					String requestUri = requestLine.substring(sep1 + 1, sep2);
+					String httpMethod = requestLine.substring(sep2 + 1);
 					int query = requestUri.lastIndexOf('?');
 					Multimap<String, String> queryParameters;
 					if (query == -1) {
@@ -77,10 +79,10 @@ public abstract class HttpServer {
 					Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 					readHeaders(headers);
 					InputStream content = getContent(headers);
-					handle(new HttpRequest(HttpMethod.valueOf(parts.get(0)),
+					handle(new HttpRequest(HttpMethod.valueOf(method),
 							requestUri,
 							queryParameters,
-							parts.get(2),
+							httpMethod,
 							Collections.unmodifiableMap(headers),
 							content), new HttpResponse(out));
 					System.out.println();
