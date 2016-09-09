@@ -7,7 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
 
 public final class QueryParser {
-	
+
 	private QueryParser() {}
 
 	public static Map<String, String> toMap(String query) {
@@ -33,19 +33,18 @@ public final class QueryParser {
 		return builder.build();
 	}
 
-	public static void parse(String query, MapBuilder builder) {
+	private static void parse(String query, MapBuilder builder) {
 		StringBuilder key = new StringBuilder();
 		StringBuilder value = new StringBuilder();
 		StringBuilder current = key;
 		int i = 0;
 		while (i < query.length()) {
-			char c = query.charAt(i);
+			char c = query.charAt(i++);
 			switch (c) {
 				case '=':
 					current = value;
 					break;
 				case '&':
-				case ';':
 					builder.put(key.toString(), value.toString());
 					key = new StringBuilder();
 					value = new StringBuilder();
@@ -55,17 +54,14 @@ public final class QueryParser {
 					current.append(' ');
 					break;
 				case '%':
-					current.append((char) Integer.parseInt(query.substring(i + 1, i + 3), 16));
+					current.append((char) Integer.parseInt(query.substring(i, i + 2), 16));
 					i += 2;
 					break;
 				default:
 					current.append(c);
 			}
-			i++;
 		}
-		if (key.length() != 0) {
-			builder.put(key.toString(), value.toString());
-		}
+		builder.put(key.toString(), value.toString());
 	}
 
 	private interface MapBuilder {

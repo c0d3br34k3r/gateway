@@ -68,23 +68,23 @@ public enum HttpStatus {
 	_511_NETWORK_AUTHENTICATION_REQUIRED(511, "Network Authentication Required");
 
 	private final int code;
-	private final String message;
+	private final String title;
 
 	HttpStatus(int code, String message) {
 		this.code = code;
-		this.message = message;
+		this.title = message;
 	}
 
 	public int code() {
 		return code;
 	}
 
-	public String message() {
-		return message;
+	public String title() {
+		return title;
 	}
 
 	@Override public String toString() {
-		return "HTTP/1.1 " + code + ' ' + message;
+		return "HTTP/1.1 " + code + ' ' + title;
 	}
 
 }

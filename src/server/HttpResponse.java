@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ public class HttpResponse {
 	private HttpStatus status;
 	private Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	private Content content = NO_CONTENT;
-	private List<String> cookies = new ArrayList<>(4);
+	private List<String> cookies = new ArrayList<>();
 	private final OutputStream out;
 
 	HttpResponse(OutputStream out) {
@@ -77,21 +78,19 @@ public class HttpResponse {
 	private static final String CRLF = "\r\n";
 
 	public void send() throws IOException {
-		// OutputStreamWriter writer = new OutputStreamWriter(out,
-		// StandardCharsets.UTF_8);
-		StringBuilder response = new StringBuilder();
-		response.append(status).append(CRLF);
+		OutputStreamWriter writer = new OutputStreamWriter(out, StandardCharsets.US_ASCII);
+		writer.append(status.toString()).append(CRLF);
 		for (Entry<String, String> header : headers.entrySet()) {
-			response.append(header.getKey())
+			writer.append(header.getKey())
 					.append(": ")
 					.append(header.getValue())
 					.append(CRLF);
 		}
 		for (String cookie : cookies) {
-			response.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie);
+			writer.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie);
 		}
-		response.append(CRLF);
-		out.write(response.toString().getBytes(StandardCharsets.US_ASCII));
+		writer.append(CRLF);
+		writer.flush();
 		content.write(out);
 		out.flush();
 	}
@@ -126,7 +125,7 @@ public class HttpResponse {
 
 		@Override public void write(OutputStream out) throws IOException {
 			byte[] buf = new byte[bufferSize];
-			for(;;) {
+			for (;;) {
 				int count = input.read(buf);
 				if (count == -1) {
 					break;
@@ -135,7 +134,7 @@ public class HttpResponse {
 				out.write(buf, 0, count);
 				out.write(CRLF.getBytes(StandardCharsets.US_ASCII));
 			}
-			out.write((0 + CRLF + CRLF).getBytes(StandardCharsets.US_ASCII));
+			out.write(("0" + CRLF + CRLF).getBytes(StandardCharsets.US_ASCII));
 		}
 	}
 

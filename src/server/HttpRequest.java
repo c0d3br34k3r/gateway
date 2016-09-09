@@ -1,39 +1,90 @@
 package server;
 
-import java.io.InputStream;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.Multimap;
+import com.google.common.net.HttpHeaders;
 
 public class HttpRequest {
 
-	// TODO: multimaps
+	private HttpMethod method;
+	private String path;
+	private String query;
+	private String httpVersion;
+	private Map<String, String> headers = new LinkedHashMap<>();
+	private Map<String, String> cookies = Collections.emptyMap();
+	private ReadableInputStream content;
 
-	private final HttpMethod method;
-	private final String requestUri;
-	private final String httpVersion;
-	private final Map<String, String> headers;
-	private final InputStream content;
+	private HttpRequest() {};
 
-	HttpRequest(HttpMethod method,
-			String requestUri,
-			Multimap<String, String> queryParameters,
-			String httpVersion,
-			Map<String, String> headers,
-			InputStream content) {
-		this.method = method;
-		this.requestUri = requestUri;
-		this.httpVersion = httpVersion;
-		this.headers = headers;
-		this.content = content;
+	static HttpRequest create(HttpInput input) throws IOException {
+		HttpRequest req = new HttpRequest();
+		req.read(input);
+		return req;
+	}
+
+	void read(HttpInput input) throws IOException {
+		List<String> requestLine = Splitter.on(' ').splitToList(input.readLine());
+		method = HttpMethod.valueOf(requestLine.get(0));
+		List<String> requestUri = Splitter.on('?').splitToList(requestLine.get(1));
+		httpVersion = requestLine.get(2);
+		path = requestUri.get(0);
+		query = requestUri.get(1);
+		Splitter headerSplitter = Splitter.on(':').trimResults();
+		for (;;) {
+			String line = input.readLine();
+			if (line.isEmpty()) {
+				break;
+			}
+			List<String> header = headerSplitter.splitToList(line);
+			String key = header.get(0);
+			String value = header.get(1);
+			headers.put(key, value);
+			if (key.equals(HttpHeaders.COOKIE)) {
+				cookies = parseCookies(value);
+			}
+		}
+		Integer contentLength = contentLength();
+		if (contentLength != null) {
+			content = input.streamContent(contentLength);
+		} else if (headers.get(HttpHeaders.TRANSFER_ENCODING).equals("Chunked")) {
+			content = input.streamChunked();
+		}
+	}
+
+	private Map<String, String> parseCookies(String value) {
+		Map<String, String> cookies = new LinkedHashMap<>();
+		Splitter cookieSplitter = Splitter.on('=').trimResults();
+		for (String cookie : Splitter.on(';').split(value)) {
+			List<String> parts = cookieSplitter.splitToList(cookie);
+			cookies.put(parts.get(0), parts.get(1));
+		}
+		return cookies;
 	}
 
 	public HttpMethod method() {
 		return method;
 	}
 
-	public String requestUri() {
-		return requestUri;
+	public String path() {
+		return path;
+	}
+
+	public String query() {
+		return path;
+	}
+
+	public Map<String, String> parseQuery() {
+		return QueryParser.toMap(query);
+	}
+
+	public Multimap<String, String> parseQueryAsMultimap() {
+		return QueryParser.toMultimap(query);
 	}
 
 	public String httpVersion() {
@@ -48,8 +99,21 @@ public class HttpRequest {
 		return headers;
 	}
 
-	public InputStream content() {
+	public Map<String, String> cookies() {
+		return cookies;
+	}
+
+	public ReadableInputStream content() {
 		return content;
+	}
+
+	public Integer contentLength() {
+		return getAsInteger(HttpHeaders.CONTENT_LENGTH);
+	}
+
+	private Integer getAsInteger(String header) {
+		String value = headers.get(header);
+		return value == null ? null : Integer.parseInt(value);
 	}
 
 }

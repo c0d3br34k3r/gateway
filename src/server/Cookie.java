@@ -22,8 +22,9 @@ public class Cookie {
 
 	public static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
 	public static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
+	public static final CharMatcher ATTRIBUTE = asciiExceptFor(";");
 
-	private static final DateTimeFormatter RFC1123_DATE_TIME =
+	private static final DateTimeFormatter DATE_TIME =
 			DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'")
 					.withZoneUTC().withLocale(Locale.US);
 
@@ -42,6 +43,7 @@ public class Cookie {
 	private String path = null;
 	private boolean secure = false;
 	private boolean httpOnly = false;
+	private List<String> extensions = new ArrayList<>();
 
 	public Cookie(String name, String value) {
 		this.name = checkChars(name, NAME);
@@ -62,6 +64,11 @@ public class Cookie {
 
 	public Cookie setExpires(DateTime expires) {
 		this.expires = expires;
+		return this;
+	}
+
+	public Cookie invalidate() {
+		this.expires = new DateTime(0L);
 		return this;
 	}
 
@@ -93,13 +100,23 @@ public class Cookie {
 		return this;
 	}
 
+	public Cookie addExtension(String name, String value) {
+		extensions.add(checkChars(name, ATTRIBUTE) + '=' + checkChars(value, ATTRIBUTE));
+		return this;
+	}
+
+	public Cookie addExtension(String value) {
+		extensions.add(checkChars(value, ATTRIBUTE));
+		return this;
+	}
+
 	private static final Joiner JOINER = Joiner.on("; ");
 
 	@Override public String toString() {
 		List<String> parts = new ArrayList<>();
 		parts.add(name + '=' + value);
 		if (expires != null) {
-			parts.add(EXPIRES + '=' + RFC1123_DATE_TIME.print(expires));
+			parts.add(EXPIRES + '=' + DATE_TIME.print(expires));
 		}
 		if (maxAge != 0) {
 			parts.add(MAX_AGE + '=' + maxAge);
@@ -116,6 +133,7 @@ public class Cookie {
 		if (httpOnly) {
 			parts.add(HTTP_ONLY);
 		}
+		parts.addAll(extensions);
 		return JOINER.join(parts);
 	}
 

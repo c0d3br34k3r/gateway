@@ -110,7 +110,6 @@ public class HttpInput {
 			ByteStreams.skipFully(in, remaining);
 			remaining = 0;
 		}
-
 	}
 
 	private class ChunkedInputStream extends ReadableInputStream {
