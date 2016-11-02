@@ -2,6 +2,7 @@ package server;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class CharsetOutputStream extends ByteArrayOutputStream {
 
@@ -13,8 +14,12 @@ public class CharsetOutputStream extends ByteArrayOutputStream {
 		super(size);
 	}
 
-	String toString(Charset charset) {
+	public String toString(Charset charset) {
 		return new String(buf, 0, count, charset);
+	}
+
+	@Override public String toString() {
+		return new String(buf, 0, count, StandardCharsets.UTF_8);
 	}
 
 }
