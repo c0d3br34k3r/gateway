@@ -6,14 +6,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import websocket.Websocket.Message;
-
-public class BlockingWebsocket extends Websocket2 {
+public class BlockingWebsocket extends Websocket {
 
 	public BlockingWebsocket(Socket socket) throws IOException {
 		this(socket, 32);
 	}
-	
+
 	public BlockingWebsocket(Socket socket, int queueCapacity) throws IOException {
 		super(socket);
 		this.messages = new ArrayBlockingQueue<>(queueCapacity);
@@ -36,13 +34,21 @@ public class BlockingWebsocket extends Websocket2 {
 	@Override protected void onError(IOException e) {
 		messages.put(new ErrorMessage(e));
 	}
-	
+
 	public Message nextMessage() throws IOException {
 		Message message = messages.take();
-		
+
 		return message;
 	}
-	
-	private static class Message
+
+	public interface Message {
+		
+		String getText();
+
+		byte[] getBinary();
+
+		int getCode();
+
+	}
 
 }
