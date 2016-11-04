@@ -36,6 +36,7 @@ public final class QueryParser {
 	private static void parse(String query, MapBuilder builder) {
 		StringBuilder key = new StringBuilder();
 		StringBuilder value = new StringBuilder();
+
 		StringBuilder current = key;
 		int i = 0;
 		while (i < query.length()) {
@@ -46,8 +47,8 @@ public final class QueryParser {
 					break;
 				case '&':
 					builder.put(key.toString(), value.toString());
-					key = new StringBuilder();
-					value = new StringBuilder();
+					key.setLength(0);
+					value.setLength(0);
 					current = key;
 					break;
 				case '+':

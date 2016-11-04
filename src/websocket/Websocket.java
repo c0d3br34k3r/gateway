@@ -2,6 +2,7 @@ package websocket;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,7 +13,7 @@ import com.google.common.io.ByteStreams;
 
 import server.CharsetOutputStream;
 
-public abstract class Websocket implements Runnable {
+public abstract class Websocket implements Closeable {
 
 	// Opcodes
 	public static final int CONTINUATION = 0x0;
@@ -40,43 +41,39 @@ public abstract class Websocket implements Runnable {
 	private static final int MID_MESSAGE_MAX_SIZE = 65535;
 	// No real max for large messages
 
-	private final InputStream in;
-	private final OutputStream out;
+	private final Socket socket;
 
 	private CharsetOutputStream currentMessage = new CharsetOutputStream();
-	boolean inProgress; // = false
-	boolean messageIsText;
+	private boolean inProgress; // = false
+	private boolean messageIsText;
+	
+	private boolean receivedClose; // = false
+	private boolean sentClose; // = false
 
-	protected Websocket(InputStream in, OutputStream out) {
-		this.in = in;
-		this.out = out;
+	// protected Websocket(InputStream in, OutputStream out) {
+	// this.in = in;
+	// this.out = out;
+	// }
+
+	protected Websocket(Socket socket) {
+		// this(socket.getInputStream(), socket.getOutputStream());
+		this.socket = socket;
 	}
 
-	protected Websocket(Socket socket) throws IOException {
-		this(socket.getInputStream(), socket.getOutputStream());
-	}
-
-	@Override public final void run() {
-		for (;;) {
-			try {
-				handleNextMessage();
-			} catch (IOException e) {
-				onError(e);
-				break;
-			}
+	public final void handleNextFrame() throws IOException {
+		if (receivedClose) {
+			throw new IOException("websocket is closed");
 		}
-	}
-
-	private void handleNextMessage() throws IOException {
+		InputStream in = socket.getInputStream();
 		int finOpcode = in.read();
 		if (finOpcode == -1) {
-			onClose(1005, "");
+			throw new IOException();
 		}
 		boolean fin = (finOpcode & FIN_BIT) == FIN_BIT;
 		int opcode = finOpcode & OPCODE_MASK;
-		int payloadSize = readLength();
-		byte[] masks = readBytes(NUM_MASKS);
-		byte[] payload = readBytes(payloadSize);
+		int payloadSize = readLength(in);
+		byte[] masks = readBytes(in, NUM_MASKS);
+		byte[] payload = readBytes(in, payloadSize);
 		for (int i = 0; i < payloadSize; i++) {
 			payload[i] ^= masks[i % NUM_MASKS];
 		}
@@ -108,7 +105,7 @@ public abstract class Websocket implements Runnable {
 				handleClose(payload);
 				break;
 			default:
-				throw new IOException("bad opcode: " + opcode);
+				throw new IOException("unknown opcode: " + opcode);
 		}
 		inProgress = false;
 	}
@@ -124,7 +121,7 @@ public abstract class Websocket implements Runnable {
 			case CONTINUATION:
 				break;
 			default:
-				throw new IOException("opcode " + opcode + " must have fin set");
+				throw new IOException("opcode " + opcode + " must have fin set or is unknown");
 		}
 		inProgress = true;
 		currentMessage.write(payload);
@@ -132,7 +129,7 @@ public abstract class Websocket implements Runnable {
 
 	private void beginMessage(boolean isText) throws IOException {
 		if (inProgress) {
-			throw new IOException();
+			throw new IOException("message in progress");
 		}
 		this.messageIsText = isText;
 	}
@@ -147,7 +144,8 @@ public abstract class Websocket implements Runnable {
 		currentMessage.reset();
 	}
 
-	private void handleClose(byte[] payload) {
+	private void handleClose(byte[] payload) throws IOException {
+		receivedClose = true;
 		int code;
 		String message;
 		if (payload.length >= 2) {
@@ -157,6 +155,17 @@ public abstract class Websocket implements Runnable {
 			code = 1005;
 			message = "";
 		}
+
+		if (!sentClose) {
+			if (code == 1005) {
+				sendClose();
+			} else {
+				sendClose(code);
+			}
+		}
+
+		socket.close();
+
 		onClose(code, message);
 	}
 
@@ -164,7 +173,7 @@ public abstract class Websocket implements Runnable {
 		sendMessage(PONG, payload);
 	}
 
-	private int readLength() throws IOException {
+	private static int readLength(InputStream in) throws IOException {
 		int lengthCode = in.read() & LENGTH_MASK;
 		int bytes;
 		switch (lengthCode) {
@@ -177,10 +186,10 @@ public abstract class Websocket implements Runnable {
 			default:
 				return lengthCode;
 		}
-		return (int) readLong(bytes);
+		return (int) readLong(in, bytes);
 	}
 
-	private long readLong(int bytes) throws IOException {
+	private static long readLong(InputStream in, int bytes) throws IOException {
 		long result = 0;
 		for (int i = 0; i < bytes; i++) {
 			result |= in.read() << (Byte.SIZE * (bytes - i - 1));
@@ -188,7 +197,7 @@ public abstract class Websocket implements Runnable {
 		return result;
 	}
 
-	private byte[] readBytes(int count) throws IOException {
+	private static byte[] readBytes(InputStream in, int count) throws IOException {
 		byte[] buf = new byte[count];
 		ByteStreams.readFully(in, buf);
 		return buf;
@@ -205,7 +214,7 @@ public abstract class Websocket implements Runnable {
 	}
 
 	public final void sendClose() throws IOException {
-		sendMessage(CLOSE, new byte[0]);
+		sendClose(new byte[0]);
 	}
 
 	public final void sendClose(int code) throws IOException {
@@ -218,7 +227,11 @@ public abstract class Websocket implements Runnable {
 		payloadBytes[0] = (byte) ((code & 0xFF00) >> Byte.SIZE);
 		payloadBytes[1] = (byte) (code & 0xFF);
 		System.arraycopy(messageBytes, 0, payloadBytes, 2, messageBytes.length);
-		sendMessage(CLOSE, payloadBytes);
+		sendClose(payloadBytes);
+	}
+
+	private void sendClose(byte[] message) throws IOException {
+		sendMessage(CLOSE, message);
 	}
 
 	private void sendMessage(int opcode, byte[] message) throws IOException {
@@ -231,6 +244,13 @@ public abstract class Websocket implements Runnable {
 
 	private synchronized void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
 			throws IOException {
+		if (receivedClose) {
+			throw new IOException("websocket is closed");
+		}
+		if (sentClose) {
+			throw new IOException("close requested");
+		}
+		OutputStream out = socket.getOutputStream();
 		out.write((fin ? FIN_BIT : 0) | opcode);
 		int lengthCode;
 		int lengthBytes;
@@ -245,15 +265,30 @@ public abstract class Websocket implements Runnable {
 			lengthBytes = LARGE_LENGTH_BYTES;
 		}
 		out.write(lengthCode);
-		writeAsBytes(len, lengthBytes);
+		writeAsBytes(out, len, lengthBytes);
 		out.write(message, off, len);
 		out.flush();
+		if (opcode == CLOSE) {
+			sentClose = true;
+		}
 	}
 
-	private void writeAsBytes(long bytes, int byteCount) throws IOException {
+	private void writeAsBytes(OutputStream out, long bytes, int byteCount) throws IOException {
 		for (int i = 0; i < byteCount; i++) {
 			out.write((int) (bytes >> (Byte.SIZE * (byteCount - i - 1))));
 		}
+	}
+
+	@Override public final void close() throws IOException {
+		socket.close();
+	}
+
+	public final boolean receivedClosed() {
+		return receivedClose;
+	}
+
+	public final boolean isClosed() {
+		return sentClose && receivedClose;
 	}
 
 	// Listnener methods
@@ -263,7 +298,5 @@ public abstract class Websocket implements Runnable {
 	protected void onMessage(byte[] bytes) {}
 
 	protected void onClose(int code, String message) {}
-
-	protected void onError(IOException e) {}
 
 }
