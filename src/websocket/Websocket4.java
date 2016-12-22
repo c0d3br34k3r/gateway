@@ -2,63 +2,18 @@ package websocket;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
 import server.CharsetOutputStream;
 
-public abstract class Websocket {
-
-	/**
-	 * Override this method to return the OutputStream.
-	 * 
-	 * @return the OutputStream for writing messages
-	 * @throws IOException if an I/O error occurs while getting the OutputStream
-	 */
-	protected abstract OutputStream getOutputStream() throws IOException;
-
-	/**
-	 * Override this method to return the InputStream.
-	 * 
-	 * @return the InputStream for reading messages.
-	 * @throws IOException if an I/O error occurs while getting the InputStream
-	 */
-	protected abstract InputStream getInputStream() throws IOException;
-
-	/**
-	 * This method is called when the Websocket has both sent and received a
-	 * close frame.
-	 * 
-	 * @throws IOException if an I/O error occurs while closing the connection
-	 */
-	protected abstract void closeConnection() throws IOException;
-
-	/**
-	 * This method is called when a message containing text is received.
-	 * 
-	 * @param text the text content of the message
-	 */
-	protected void onMessage(String text) {}
-
-	/**
-	 * This method is called when a message containing binary data is received.
-	 * 
-	 * @param bytes the binary content of the message
-	 */
-	protected void onMessage(byte[] bytes) {}
-
-	/**
-	 * This method is called when a close message is received.
-	 * 
-	 * @param code the close code, or 1005 if no close code was present
-	 * @param message the close message, or the empty String if no close message
-	 *        was present
-	 */
-	protected void onClose(int code, String message) {}
+public abstract class Websocket4 implements Closeable {
 
 	// Opcodes
 	public static final int CONTINUATION = 0x0;
@@ -86,44 +41,30 @@ public abstract class Websocket {
 	private static final int MID_MESSAGE_MAX_SIZE = 65535;
 	// No real max for large messages
 
+	private final Socket socket;
+
 	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
-
+	
 	private boolean receivedClose; // = false
 	private boolean sentClose; // = false
 
-	/**
-	 * Reads a frame from the InputStream, and handles it appropriately,
-	 * depending on the opcode and the fin bit.
-	 * <ul>
-	 * <li>If the frame is a text, binary, or continuation frame with the fin
-	 * bit set, {@link #onMessage(String)} or {@link #onMessage(byte[])} is
-	 * called appropriately with the message contents.
-	 * <li>If the frame is a text, binary, or continuation frame with the fin
-	 * bit not set, the payload is written to the message buffer for later use.
-	 * <li>If the frame is a close frame, then this Websocket sends a close
-	 * frame in response, and calls {@link #onClose(int, String)} with the
-	 * received close code and message.
-	 * <li>If the frame is a ping frame, then this Websocket sends a pong frame
-	 * in response.
-	 * <li>If the frame is a pong frame, nothing happens.
-	 * </ul>
-	 * 
-	 * @throws IOException if an I/O error occurs
-	 * @throws WebsocketProtocolException if any of the following occur:
-	 *         <ul>
-	 *         <li>An unknown opcode is received
-	 *         <li>A continuation frame is received and no message is in
-	 *         progress
-	 *         <li>A text or binary frame is received and a message is already
-	 *         in progress
-	 *         <li>A ping, pong, or close frame without the fin bit set is
-	 *         received
-	 *         </ul>
-	 */
+	// protected Websocket(InputStream in, OutputStream out) {
+	// this.in = in;
+	// this.out = out;
+	// }
+
+	protected Websocket4(Socket socket) {
+		// this(socket.getInputStream(), socket.getOutputStream());
+		this.socket = socket;
+	}
+
 	public final void handleNextFrame() throws IOException {
-		InputStream in = getInputStream();
+//		if (receivedClose) {
+//			throw new IOException("websocket is closed");
+//		}
+		InputStream in = socket.getInputStream();
 		int finOpcode = in.read();
 		if (finOpcode == -1) {
 			throw new IOException();
@@ -137,7 +78,7 @@ public abstract class Websocket {
 			payload[i] ^= masks[i % NUM_MASKS];
 		}
 		if (!inProgress && opcode == CONTINUATION) {
-			throw new WebsocketProtocolException("unstarted continuation");
+			throw new IOException("unstarted continuation");
 		}
 		if (fin) {
 			handleFinished(opcode, payload);
@@ -160,14 +101,11 @@ public abstract class Websocket {
 			case PING:
 				handlePing(payload);
 				break;
-			case PONG:
-				// do nothing
-				break;
 			case CLOSE:
 				handleClose(payload);
 				break;
 			default:
-				throw new WebsocketProtocolException("unknown opcode: " + opcode);
+				throw new IOException("unknown opcode: " + opcode);
 		}
 		inProgress = false;
 	}
@@ -183,8 +121,7 @@ public abstract class Websocket {
 			case CONTINUATION:
 				break;
 			default:
-				throw new WebsocketProtocolException(
-						"opcode " + opcode + " must have fin set or is unknown");
+				throw new IOException("opcode " + opcode + " must have fin set or is unknown");
 		}
 		inProgress = true;
 		currentMessage.write(payload);
@@ -192,7 +129,7 @@ public abstract class Websocket {
 
 	private void beginMessage(boolean isText) throws IOException {
 		if (inProgress) {
-			throw new WebsocketProtocolException("message in progress");
+			throw new IOException("message in progress");
 		}
 		this.messageIsText = isText;
 	}
@@ -219,17 +156,15 @@ public abstract class Websocket {
 			message = "";
 		}
 
-		synchronized (this) {
-			if (!sentClose) {
-				if (code == 1005) {
-					sendClose();
-				} else {
-					sendClose(code);
-				}
+		if (!sentClose) {
+			if (code == 1005) {
+				sendClose();
+			} else {
+				sendClose(code);
 			}
 		}
 
-		closeConnection();
+		socket.close();
 		onClose(code, message);
 	}
 
@@ -269,63 +204,22 @@ public abstract class Websocket {
 
 	// Write methods
 
-	/**
-	 * Sends a single-frame text message with the given text.
-	 * 
-	 * @param message the text content of the message
-	 * @throws IOException if an I/O error occurs while sending the message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
-	 */
 	public final void send(String message) throws IOException {
 		sendMessage(TEXT, message.getBytes(UTF_8));
 	}
 
-	/**
-	 * Sends a single-frame binary message with the given data.
-	 * 
-	 * @param message the binary content of the message
-	 * @throws IOException if an I/O error occurs while sending the message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
-	 */
 	public final void send(byte[] message) throws IOException {
 		sendMessage(BINARY, message);
 	}
 
-	/**
-	 * Sends a close message with no close code and no close message.
-	 * 
-	 * @throws IOException if an I/O error occurs while sending the close
-	 *         message
-	 */
 	public final void sendClose() throws IOException {
 		sendClose(new byte[0]);
 	}
 
-	/**
-	 * Sends a close message with the given close code and no close message.
-	 * 
-	 * @param code the close code
-	 * @throws IOException if an I/O error occurs while sending the close
-	 *         message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
-	 */
 	public final void sendClose(int code) throws IOException {
 		sendClose(code, "");
 	}
 
-	/**
-	 * Sends a close message with the given close code and close message.
-	 * 
-	 * @param code the close code
-	 * @param message the close message
-	 * @throws IOException if an I/O error occurs while sending the close
-	 *         message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
-	 */
 	public final void sendClose(int code, String message) throws IOException {
 		byte[] messageBytes = message.getBytes(UTF_8);
 		byte[] payloadBytes = new byte[2 + messageBytes.length];
@@ -350,12 +244,12 @@ public abstract class Websocket {
 	private synchronized void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
 			throws IOException {
 		if (receivedClose) {
-			throw new WebsocketProtocolException("websocket is closed");
+			throw new IOException("websocket is closed");
 		}
 		if (sentClose) {
-			throw new WebsocketProtocolException("further data cannot be sent after a close");
+			throw new IOException("further data cannot be sent after a close");
 		}
-		OutputStream out = getOutputStream();
+		OutputStream out = socket.getOutputStream();
 		out.write((fin ? FIN_BIT : 0) | opcode);
 		int lengthCode;
 		int lengthBytes;
@@ -384,8 +278,20 @@ public abstract class Websocket {
 		}
 	}
 
+	@Override public final void close() throws IOException {
+		socket.close();
+	}
+
 	public final boolean isClosed() {
 		return receivedClose;
 	}
+
+	// Listnener methods
+
+	protected void onMessage(String text) {}
+
+	protected void onMessage(byte[] bytes) {}
+
+	protected void onClose(int code, String message) {}
 
 }

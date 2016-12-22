@@ -40,7 +40,7 @@ public abstract class WebsocketServer implements Closeable {
 		}
 	}
 
-	public final Websocket accept() throws IOException {
+	public final Websocket4 accept() throws IOException {
 		Socket socket = server.accept();
 		HttpInput in = new HttpInput(socket.getInputStream());
 		String requestLine = in.readLine();
@@ -62,7 +62,7 @@ public abstract class WebsocketServer implements Closeable {
 		return createWebsocket(socket, requestUri, headers);
 	}
 
-	protected abstract Websocket createWebsocket(Socket socket, String uri,
+	protected abstract Websocket4 createWebsocket(Socket socket, String uri,
 			Map<String, String> headers);
 
 	@Override public void close() throws IOException {

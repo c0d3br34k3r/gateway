@@ -9,10 +9,10 @@ public class WebsocketTest {
 	public static void main(String[] args) throws IOException {
 		WebsocketServer server = new WebsocketServer(3637) {
 
-			@Override protected Websocket createWebsocket(Socket socket, String uri,
+			@Override protected Websocket4 createWebsocket(Socket socket, String uri,
 					Map<String, String> headers) {
 				System.out.println("opened");
-				final Websocket websocket = new Websocket(socket) {
+				final Websocket4 websocket = new Websocket4(socket) {
 
 					@Override protected void onMessage(String text) {
 						System.out.println(text.length());
@@ -43,8 +43,8 @@ public class WebsocketTest {
 				return websocket;
 			}
 		};
-		Websocket websocket = server.accept();
-		while (!websocket.receivedClosed()) {
+		Websocket4 websocket = server.accept();
+		while (!websocket.isClosed()) {
 			websocket.handleNextFrame();
 		}
 	}
