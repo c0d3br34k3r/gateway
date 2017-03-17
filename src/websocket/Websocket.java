@@ -122,34 +122,37 @@ public abstract class Websocket {
 	 *         received
 	 *         </ul>
 	 */
-	public final void handleNextFrame() throws IOException {
+	protected final void handleNextMessage() throws IOException {
 		InputStream in = getInputStream();
-		int finOpcode = in.read();
-		if (finOpcode == -1) {
-			throw new IOException();
-		}
-		boolean fin = (finOpcode & FIN_BIT) == FIN_BIT;
-		int opcode = finOpcode & OPCODE_MASK;
-		int payloadSize = readLength(in);
-		byte[] masks = readBytes(in, NUM_MASKS);
-		byte[] payload = readBytes(in, payloadSize);
-		for (int i = 0; i < payloadSize; i++) {
-			payload[i] ^= masks[i % NUM_MASKS];
-		}
-		if (!inProgress && opcode == CONTINUATION) {
-			throw new WebsocketProtocolException("unstarted continuation");
-		}
-		if (fin) {
-			handleFinished(opcode, payload);
-		} else {
-			handleUnfinished(opcode, payload);
-		}
+		boolean fin;
+		do {
+			int finOpcode = in.read();
+			if (finOpcode == -1) {
+				throw new IOException();
+			}
+			fin = (finOpcode & FIN_BIT) == FIN_BIT;
+			int opcode = finOpcode & OPCODE_MASK;
+			int payloadSize = readLength(in);
+			byte[] masks = readBytes(in, NUM_MASKS);
+			byte[] payload = readBytes(in, payloadSize);
+			for (int i = 0; i < payloadSize; i++) {
+				payload[i] ^= masks[i % NUM_MASKS];
+			}
+			if (!inProgress && opcode == CONTINUATION) {
+				throw new WebsocketProtocolException("unstarted continuation");
+			}
+			if (fin) {
+				handleFinished(opcode, payload);
+			} else {
+				handleUnfinished(opcode, payload);
+			}
+		} while (!fin);
 	}
 
 	private void handleFinished(int opcode, byte[] payload) throws IOException {
 		switch (opcode) {
 			case CONTINUATION:
-				handleLastContinuation(payload);
+				handleFinalContinuation(payload);
 				break;
 			case TEXT:
 				onMessage(new String(payload, StandardCharsets.UTF_8));
@@ -197,7 +200,7 @@ public abstract class Websocket {
 		this.messageIsText = isText;
 	}
 
-	private void handleLastContinuation(byte[] payload) throws IOException {
+	private void handleFinalContinuation(byte[] payload) throws IOException {
 		currentMessage.write(payload);
 		if (messageIsText) {
 			onMessage(currentMessage.toString());
@@ -335,7 +338,7 @@ public abstract class Websocket {
 		sendClose(payloadBytes);
 	}
 
-	private void sendClose(byte[] message) throws IOException {
+	private synchronized void sendClose(byte[] message) throws IOException {
 		sendMessage(CLOSE, message);
 	}
 
@@ -347,7 +350,7 @@ public abstract class Websocket {
 		sendFrame(fin, opcode, message, 0, message.length);
 	}
 
-	private synchronized void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
+	private void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
 			throws IOException {
 		if (receivedClose) {
 			throw new WebsocketProtocolException("websocket is closed");
