@@ -30,7 +30,7 @@ public class Server {
 								}
 							}
 							
-						}).start();;
+						}).start();
 					} catch (IOException e) {
 						// continue
 					}

@@ -7,11 +7,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
 import com.google.common.base.Splitter;
+import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import com.google.common.net.HttpHeaders;
 
@@ -27,18 +26,9 @@ public abstract class WebsocketServer implements Closeable {
 	}
 
 	private static final BaseEncoding BASE64 = BaseEncoding.base64();
-	private static final MessageDigest SHA1;
 	private static final String WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	private static final String CRLF = "\r\n";
 	private static final String WEBSOCKET_KEY = "Sec-WebSocket-Key";
-
-	static {
-		try {
-			SHA1 = MessageDigest.getInstance("SHA1");
-		} catch (NoSuchAlgorithmException e) {
-			throw new AssertionError(e);
-		}
-	}
 
 	public final Websocket4 accept() throws IOException {
 		Socket socket = server.accept();
@@ -50,7 +40,7 @@ public abstract class WebsocketServer implements Closeable {
 		if (key == null) {
 			throw new IOException("No websocket accept key found.");
 		}
-		String acceptKey = BASE64.encode(SHA1.digest((key + WEBSOCKET_GUID).getBytes(US_ASCII)));
+		String acceptKey = BASE64.encode(Hashing.sha1().hashString(key + WEBSOCKET_GUID, US_ASCII).asBytes());
 		String reply = HttpStatus._101_SWITCHING_PROTOCOLS + CRLF
 				+ HttpHeaders.UPGRADE + ": websocket" + CRLF
 				+ HttpHeaders.CONNECTION + ": Upgrade" + CRLF

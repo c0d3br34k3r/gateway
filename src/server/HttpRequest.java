@@ -76,7 +76,7 @@ public class HttpRequest {
 	}
 
 	public String query() {
-		return path;
+		return query;
 	}
 
 	public Map<String, String> parseQuery() {

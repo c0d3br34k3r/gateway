@@ -1,6 +1,5 @@
 package server;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -47,10 +46,6 @@ public class CharsetOutputStream extends OutputStream {
 	}
 
 	@Override public void write(byte b[], int off, int len) {
-		if ((off < 0) || (off > b.length) || (len < 0) ||
-				((off + len) - b.length > 0)) {
-			throw new IndexOutOfBoundsException();
-		}
 		ensureCapacity(count + len);
 		System.arraycopy(b, off, buf, count, len);
 		count += len;
@@ -76,6 +71,6 @@ public class CharsetOutputStream extends OutputStream {
 		return toString(StandardCharsets.UTF_8);
 	}
 
-	@Override public void close() throws IOException {}
+	@Override public void close() {}
 
 }

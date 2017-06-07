@@ -71,7 +71,7 @@ public class HttpResponse {
 		return this;
 	}
 
-	public void addCookie(Cookie cookie) {
+	public void addCookie(CookieBuilder cookie) {
 		cookies.add(cookie.toString());
 	}
 

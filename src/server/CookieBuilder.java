@@ -11,13 +11,13 @@ import org.joda.time.format.DateTimeFormatter;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 
-public class Cookie {
+public class CookieBuilder {
 
 	public static final String EXPIRES = "Expires";
 	public static final String MAX_AGE = "Max-Age";
 	public static final String DOMAIN = "Domain";
 	public static final String PATH = "Path";
-	public static final String SECURE = "Path";
+	public static final String SECURE = "Secure";
 	public static final String HTTP_ONLY = "HttpOnly";
 
 	public static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
@@ -29,9 +29,8 @@ public class Cookie {
 					.withZoneUTC().withLocale(Locale.US);
 
 	private static CharMatcher asciiExceptFor(String disallowed) {
-		return CharMatcher.inRange((char) 0x20, (char) 0x7E)
-				.and(CharMatcher.noneOf(disallowed))
-				.precomputed();
+		return CharMatcher.inRange('\u0020', '\u007E')
+				.and(CharMatcher.noneOf(disallowed));
 	}
 
 	private final String name;
@@ -45,12 +44,12 @@ public class Cookie {
 	private boolean httpOnly = false;
 	private List<String> extensions = new ArrayList<>();
 
-	public Cookie(String name, String value) {
+	public CookieBuilder(String name, String value) {
 		this.name = checkChars(name, NAME);
 		this.value = checkChars(value, VALUE);
 	}
 
-	public Cookie(String name, String value, DateTime expires) {
+	public CookieBuilder(String name, String value, DateTime expires) {
 		this(name, value);
 		this.expires = expires;
 	}
@@ -62,17 +61,17 @@ public class Cookie {
 		return s;
 	}
 
-	public Cookie setExpires(DateTime expires) {
+	public CookieBuilder setExpires(DateTime expires) {
 		this.expires = expires;
 		return this;
 	}
 
-	public Cookie invalidate() {
+	public CookieBuilder invalidate() {
 		this.expires = new DateTime(0L);
 		return this;
 	}
 
-	public Cookie setMaxAge(int maxAge) {
+	public CookieBuilder setMaxAge(int maxAge) {
 		if (maxAge < 1) {
 			throw new IllegalArgumentException("Max-Age must be greater than 0");
 		}
@@ -80,39 +79,39 @@ public class Cookie {
 		return this;
 	}
 
-	public Cookie setDomain(String domain) {
+	public CookieBuilder setDomain(String domain) {
 		this.domain = domain;
 		return this;
 	}
 
-	public Cookie setPath(String path) {
+	public CookieBuilder setPath(String path) {
 		this.path = path;
 		return this;
 	}
 
-	public Cookie setSecure(boolean secure) {
+	public CookieBuilder setSecure(boolean secure) {
 		this.secure = secure;
 		return this;
 	}
 
-	public Cookie setHttpOnly(boolean httpOnly) {
+	public CookieBuilder setHttpOnly(boolean httpOnly) {
 		this.httpOnly = httpOnly;
 		return this;
 	}
 
-	public Cookie addExtension(String name, String value) {
+	public CookieBuilder addExtension(String name, String value) {
 		extensions.add(checkChars(name, ATTRIBUTE) + '=' + checkChars(value, ATTRIBUTE));
 		return this;
 	}
 
-	public Cookie addExtension(String value) {
+	public CookieBuilder addExtension(String value) {
 		extensions.add(checkChars(value, ATTRIBUTE));
 		return this;
 	}
 
 	private static final Joiner JOINER = Joiner.on("; ");
 
-	@Override public String toString() {
+	public String build() {
 		List<String> parts = new ArrayList<>();
 		parts.add(name + '=' + value);
 		if (expires != null) {
