@@ -1,15 +1,13 @@
 package server;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,19 +47,27 @@ public class HttpResponse {
 		return setContent(content.getBytes(charset));
 	}
 
-	public HttpResponse setContent(File file) {
-		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(file.length()));
-		try {
-			content = new RegularContent(new FileInputStream(file));
-		} catch (FileNotFoundException e) {
-			throw new IllegalArgumentException(e);
-		}
+	public HttpResponse setContent(final Path file) throws IOException {
+		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(Files.size(file)));
+		content = new Content() {
+
+			@Override public void write(OutputStream out) throws IOException {
+				try (InputStream in = Files.newInputStream(file)) {
+					ByteStreams.copy(in, out);
+				}
+			}
+		};
 		return this;
 	}
 
-	public HttpResponse setContent(byte[] bytes) {
+	public HttpResponse setContent(final byte[] bytes) {
 		setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(bytes.length));
-		content = new RegularContent(new ByteArrayInputStream(bytes));
+		content = new Content() {
+
+			@Override public void write(OutputStream out) throws IOException {
+				out.write(bytes);
+			}
+		};
 		return this;
 	}
 
@@ -87,7 +93,7 @@ public class HttpResponse {
 					.append(CRLF);
 		}
 		for (String cookie : cookies) {
-			writer.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie);
+			writer.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie).append(CRLF);
 		}
 		writer.append(CRLF);
 		writer.flush();
@@ -98,19 +104,6 @@ public class HttpResponse {
 	private interface Content {
 
 		void write(OutputStream out) throws IOException;
-	}
-
-	private static class RegularContent implements Content {
-
-		private InputStream input;
-
-		public RegularContent(InputStream input) {
-			this.input = input;
-		}
-
-		@Override public void write(OutputStream out) throws IOException {
-			ByteStreams.copy(input, out);
-		}
 	}
 
 	private static class ChunkedContent implements Content {
@@ -124,17 +117,19 @@ public class HttpResponse {
 		}
 
 		@Override public void write(OutputStream out) throws IOException {
-			byte[] buf = new byte[bufferSize];
-			for (;;) {
-				int count = input.read(buf);
-				if (count == -1) {
-					break;
+			try (InputStream in = input) {
+				byte[] buf = new byte[bufferSize];
+				for (;;) {
+					int count = in.read(buf);
+					if (count == -1) {
+						break;
+					}
+					out.write((count + CRLF).getBytes(StandardCharsets.US_ASCII));
+					out.write(buf, 0, count);
+					out.write(CRLF.getBytes(StandardCharsets.US_ASCII));
 				}
-				out.write((count + CRLF).getBytes(StandardCharsets.US_ASCII));
-				out.write(buf, 0, count);
-				out.write(CRLF.getBytes(StandardCharsets.US_ASCII));
+				out.write(("0" + CRLF + CRLF).getBytes(StandardCharsets.US_ASCII));
 			}
-			out.write(("0" + CRLF + CRLF).getBytes(StandardCharsets.US_ASCII));
 		}
 	}
 

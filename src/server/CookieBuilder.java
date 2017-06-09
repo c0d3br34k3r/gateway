@@ -115,16 +115,16 @@ public class CookieBuilder {
 		List<String> parts = new ArrayList<>();
 		parts.add(name + '=' + value);
 		if (expires != null) {
-			parts.add(EXPIRES + '=' + DATE_TIME.print(expires));
+			addProperty(parts, EXPIRES, DATE_TIME.print(expires));
 		}
 		if (maxAge != 0) {
-			parts.add(MAX_AGE + '=' + maxAge);
+			addProperty(parts, MAX_AGE, maxAge);
 		}
 		if (domain != null) {
-			parts.add(DOMAIN + '=' + domain);
+			addProperty(parts, DOMAIN, domain);
 		}
 		if (path != null) {
-			parts.add(PATH + '=' + path);
+			addProperty(parts, PATH, path);
 		}
 		if (secure) {
 			parts.add(SECURE);
@@ -134,6 +134,10 @@ public class CookieBuilder {
 		}
 		parts.addAll(extensions);
 		return JOINER.join(parts);
+	}
+
+	private static void addProperty(List<String> parts, String key, Object value) {
+		parts.add(key + '=' + value);
 	}
 
 }
