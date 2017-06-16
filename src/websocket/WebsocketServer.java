@@ -14,7 +14,7 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import com.google.common.net.HttpHeaders;
 
-import server.HttpInput;
+import server.HttpReader;
 import server.HttpStatus;
 
 public abstract class WebsocketServer implements Closeable {
@@ -32,7 +32,7 @@ public abstract class WebsocketServer implements Closeable {
 
 	public final Websocket4 accept() throws IOException {
 		Socket socket = server.accept();
-		HttpInput in = new HttpInput(socket.getInputStream());
+		HttpReader in = new HttpReader(socket.getInputStream());
 		String requestLine = in.readLine();
 		Map<String, String> headers = in.readHeaders();
 		String requestUri = Splitter.on(' ').splitToList(requestLine).get(1);

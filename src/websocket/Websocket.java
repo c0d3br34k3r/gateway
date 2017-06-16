@@ -12,7 +12,7 @@ import com.google.common.io.ByteStreams;
 
 import server.CharsetOutputStream;
 
-public abstract class Websocket {
+public abstract class Websocket implements Runnable {
 
 	/**
 	 * Override this method to return the OutputStream.
@@ -240,10 +240,10 @@ public abstract class Websocket {
 		}
 	}
 
-	private static int readInt(InputStream in, int bytes) throws IOException {
+	private static int readInt(InputStream in, int byteCount) throws IOException {
 		int result = 0;
-		for (int i = 0; i < bytes; i++) {
-			result |= in.read() << (Byte.SIZE * (bytes - i - 1));
+		for (int i = 0; i < byteCount; i++) {
+			result |= in.read() << (Byte.SIZE * (byteCount - i - 1));
 		}
 		return result;
 	}
@@ -280,13 +280,9 @@ public abstract class Websocket {
 		sendMessage(BINARY, message);
 	}
 
-	public final synchronized void send(InputStream in) throws IOException {
-		send(in, DEFAULT_BUFFER_SIZE);
-	}
-
-	public final synchronized void send(InputStream in, int bufferSize) throws IOException {
+	public final void send(InputStream in) throws IOException {
 		PushbackInputStream pushback = new PushbackInputStream(in, 1);
-		byte[] buffer = new byte[bufferSize];
+		byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
 		boolean fin = sendFrame(pushback, buffer, BINARY);
 		while (!fin) {
 			fin = sendFrame(pushback, buffer, CONTINUATION);
@@ -345,7 +341,7 @@ public abstract class Websocket {
 		sendClose(payloadBytes);
 	}
 
-	private synchronized void sendClose(byte[] message) throws IOException {
+	private void sendClose(byte[] message) throws IOException {
 		sendMessage(CLOSE, message);
 	}
 

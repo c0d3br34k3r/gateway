@@ -3,19 +3,17 @@ package server;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import com.google.common.io.ByteStreams;
 
 /**
  * Reads HTTP content from an InputStream.
  */
-public class HttpInput {
+public class HttpReader {
 
 	private InputStream in;
 
-	public HttpInput(InputStream in) {
+	public HttpReader(InputStream in) {
 		this.in = in;
 	}
 
@@ -36,33 +34,11 @@ public class HttpInput {
 		}
 	}
 
-	public Map<String, String> readHeaders() throws IOException {
-		Map<String, String> headers = new LinkedHashMap<>();
-		readHeaders(headers);
-		return headers;
-	}
-
-	public void readHeaders(Map<String, String> headers) throws IOException {
-		String line;
-		for (;;) {
-			line = readLine();
-			if (line.isEmpty()) {
-				return;
-			}
-			int separator = line.indexOf(':');
-			if (separator == -1) {
-				throw new IOException("Malformed header: " + line);
-			}
-			headers.put(line.substring(0, separator).trim(),
-					line.substring(separator + 1).trim());
-		}
-	}
-
 	public ReadableInputStream streamContent(int count) {
 		return new ContentInputStream(count);
 	}
 
-	public ReadableInputStream streamChunked() throws IOException {
+	public InputStream streamChunked() throws IOException {
 		return new ChunkedInputStream();
 	}
 
@@ -112,10 +88,10 @@ public class HttpInput {
 		}
 	}
 
-	private class ChunkedInputStream extends ReadableInputStream {
+	private class ChunkedInputStream extends InputStream {
 
 		private long remaining;
-		private boolean end = false;
+		private boolean end; // = false
 
 		public ChunkedInputStream() throws IOException {
 			this.remaining = Integer.parseInt(readLine(), 16);
@@ -134,11 +110,11 @@ public class HttpInput {
 		}
 
 		@Override public int read(byte[] b, int off, int len) throws IOException {
-			if (end) {
-				return -1;
-			}
 			if (len == 0) {
 				return 0;
+			}
+			if (end) {
+				return -1;
 			}
 			if (remaining == 0) {
 				nextChunk();

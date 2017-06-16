@@ -3,7 +3,6 @@ package server;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -47,6 +46,17 @@ public class HttpResponse {
 		return setContent(content.getBytes(charset));
 	}
 
+	public HttpResponse setContent(final byte[] bytes) {
+		setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(bytes.length));
+		content = new Content() {
+
+			@Override public void write(OutputStream out) throws IOException {
+				out.write(bytes);
+			}
+		};
+		return this;
+	}
+
 	public HttpResponse setContent(final Path file) throws IOException {
 		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(Files.size(file)));
 		content = new Content() {
@@ -55,17 +65,6 @@ public class HttpResponse {
 				try (InputStream in = Files.newInputStream(file)) {
 					ByteStreams.copy(in, out);
 				}
-			}
-		};
-		return this;
-	}
-
-	public HttpResponse setContent(final byte[] bytes) {
-		setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(bytes.length));
-		content = new Content() {
-
-			@Override public void write(OutputStream out) throws IOException {
-				out.write(bytes);
 			}
 		};
 		return this;
@@ -84,21 +83,25 @@ public class HttpResponse {
 	private static final String CRLF = "\r\n";
 
 	public void send() throws IOException {
-		OutputStreamWriter writer = new OutputStreamWriter(out, StandardCharsets.US_ASCII);
-		writer.append(status.toString()).append(CRLF);
+		StringBuilder builder = new StringBuilder();
+		builder.append(status.toString()).append(CRLF);
 		for (Entry<String, String> header : headers.entrySet()) {
-			writer.append(header.getKey())
+			builder.append(header.getKey())
 					.append(": ")
 					.append(header.getValue())
 					.append(CRLF);
 		}
 		for (String cookie : cookies) {
-			writer.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie).append(CRLF);
+			builder.append(HttpHeaders.SET_COOKIE).append(": ").append(cookie).append(CRLF);
 		}
-		writer.append(CRLF);
-		writer.flush();
+		builder.append(CRLF);
+		writeAscii(out, builder.toString());
 		content.write(out);
 		out.flush();
+	}
+
+	private static void writeAscii(OutputStream out, String text) throws IOException {
+		out.write(text.getBytes(StandardCharsets.US_ASCII));
 	}
 
 	private interface Content {
@@ -124,11 +127,11 @@ public class HttpResponse {
 					if (count == -1) {
 						break;
 					}
-					out.write((count + CRLF).getBytes(StandardCharsets.US_ASCII));
+					writeAscii(out, count + CRLF);
 					out.write(buf, 0, count);
-					out.write(CRLF.getBytes(StandardCharsets.US_ASCII));
+					writeAscii(out, CRLF);
 				}
-				out.write(("0" + CRLF + CRLF).getBytes(StandardCharsets.US_ASCII));
+				writeAscii(out, "0" + CRLF + CRLF);
 			}
 		}
 	}

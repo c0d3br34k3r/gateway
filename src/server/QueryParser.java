@@ -1,5 +1,6 @@
 package server;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableListMultimap;
@@ -11,14 +12,15 @@ public final class QueryParser {
 	private QueryParser() {}
 
 	public static Map<String, String> toMap(String query) {
-		final ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+		// So we don't crash on duplicate keys
+		final Map<String, String> builder = new LinkedHashMap<>();
 		parse(query, new MapBuilder() {
 
 			@Override public void put(String key, String value) {
 				builder.put(key, value);
 			}
 		});
-		return builder.build();
+		return ImmutableMap.copyOf(builder);
 	}
 
 	public static ListMultimap<String, String> toMultimap(String query) {

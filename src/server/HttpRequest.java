@@ -22,19 +22,15 @@ public class HttpRequest {
 
 	private HttpRequest() {};
 
-	static HttpRequest create(HttpInput input) throws IOException {
+	static HttpRequest create(HttpReader input) throws IOException {
 		HttpRequest req = new HttpRequest();
 		req.read(input);
 		return req;
 	}
 
-	void read(HttpInput input) throws IOException {
-		List<String> requestLine = Splitter.on(' ').splitToList(input.readLine());
-		method = HttpMethod.valueOf(requestLine.get(0));
-		List<String> requestUri = Splitter.on('?').splitToList(requestLine.get(1));
-		httpVersion = requestLine.get(2);
-		path = requestUri.get(0);
-		query = requestUri.get(1);
+	void read(HttpReader input) throws IOException {
+		parseRequestLine(input.readLine());
+
 		Splitter headerSplitter = Splitter.on(':').trimResults();
 		for (;;) {
 			String line = input.readLine();
@@ -49,11 +45,27 @@ public class HttpRequest {
 				cookies = parseCookies(value);
 			}
 		}
+		
 		Integer contentLength = contentLength();
 		if (contentLength != null) {
 			content = input.streamContent(contentLength);
 		} else if (headers.get(HttpHeaders.TRANSFER_ENCODING).equals("Chunked")) {
 			content = input.streamChunked();
+		}
+	}
+
+	private void parseRequestLine(String requestLine) {
+		List<String> requestParts = Splitter.on(' ').splitToList(requestLine);
+		method = HttpMethod.valueOf(requestParts.get(0));
+		String requestUri = requestParts.get(1);
+		httpVersion = requestParts.get(2);
+		int queryIndex = requestUri.indexOf('?');
+		if (queryIndex == -1) {
+			path = requestUri;
+			query = "";
+		} else {
+			path = requestUri.substring(0, queryIndex);
+			query = requestLine.substring(queryIndex + 1);
 		}
 	}
 

@@ -12,7 +12,7 @@ public class TimeTest {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		for (int i = 0; i < 10000; i++) {
 			try (InputStream in = new FileInputStream("lines.txt")) {
-				HttpInput http = new HttpInput(in);
+				HttpReader http = new HttpReader(in);
 				String line;
 				do {
 					line = http.readLine();

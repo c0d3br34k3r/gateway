@@ -1,17 +1,13 @@
 package websocket;
 
 import java.io.IOException;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public abstract class BlockingWebsocket extends Websocket {
 
 	public BlockingWebsocket() {
-		this(32);
-	}
-
-	public BlockingWebsocket(int capacity) {
-		this.queue = new ArrayBlockingQueue<>(capacity);
+		queue = new LinkedBlockingQueue<>();
 	}
 
 	private BlockingQueue<String> queue;
@@ -35,9 +31,9 @@ public abstract class BlockingWebsocket extends Websocket {
 	@Override protected void onClose(int code, String message) {
 		queue.add(null);
 	}
-	
+
 	public static abstract class Message {
-		
+
 	}
 
 }

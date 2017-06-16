@@ -11,7 +11,7 @@ public class ContentTest {
 				"line1\r\nline2\r\nline3\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n";
 		BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(lines.getBytes()));
 
-		HttpInput http = new HttpInput(stream);
+		HttpReader http = new HttpReader(stream);
 
 		for (;;) {
 			String line = http.readLine();
