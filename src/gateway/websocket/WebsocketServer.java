@@ -1,4 +1,4 @@
-package websocket;
+package gateway.websocket;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
@@ -16,8 +16,8 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import com.google.common.net.HttpHeaders;
 
-import server.HttpReader;
-import server.StandardHttpStatus;
+import gateway.HttpReader;
+import gateway.StandardHttpStatus;
 
 public abstract class WebsocketServer implements Closeable {
 

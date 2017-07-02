@@ -1,4 +1,4 @@
-package websocket;
+package gateway.websocket;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

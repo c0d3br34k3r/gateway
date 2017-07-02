@@ -1,4 +1,4 @@
-package websocket;
+package gateway.websocket;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
-import server.CharsetOutputStream;
+import gateway.CharsetOutputStream;
 
 public abstract class Websocket4 implements Closeable {
 

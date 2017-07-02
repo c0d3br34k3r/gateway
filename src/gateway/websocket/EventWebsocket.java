@@ -1,9 +1,9 @@
-package websocket;
+package gateway.websocket;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import server.CharsetOutputStream;
+import gateway.CharsetOutputStream;
 
 public abstract class EventWebsocket extends AbstractWebsocket {
 

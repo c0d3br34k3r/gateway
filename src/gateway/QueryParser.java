@@ -1,4 +1,4 @@
-package server;
+package gateway;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
