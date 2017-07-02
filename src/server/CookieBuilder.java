@@ -56,7 +56,8 @@ public class CookieBuilder {
 
 	private static String checkChars(String s, CharMatcher matcher) {
 		if (!matcher.matchesAllOf(s)) {
-			throw new IllegalArgumentException("invalid chars: " + matcher.removeFrom(s));
+			throw new IllegalArgumentException(
+					String.format("invalid chars <%s> in <%s>", matcher.retainFrom(s), s));
 		}
 		return s;
 	}
@@ -139,5 +140,11 @@ public class CookieBuilder {
 	private static void addProperty(List<String> parts, String key, Object value) {
 		parts.add(key + '=' + value);
 	}
+
+	@Override public String toString() {
+		return build();
+	}
+	
+	
 
 }

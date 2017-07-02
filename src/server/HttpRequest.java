@@ -1,16 +1,22 @@
 package server;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Multimap;
+import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
 
 public class HttpRequest {
+
+	private static final String CHUNKED = "Chunked";
 
 	private HttpMethod method;
 	private String path;
@@ -18,9 +24,9 @@ public class HttpRequest {
 	private String httpVersion;
 	private Map<String, String> headers = new LinkedHashMap<>();
 	private Map<String, String> cookies = Collections.emptyMap();
-	private ReadableInputStream content;
+	private InputStream content;
 
-	private HttpRequest() {};
+	private HttpRequest() {}
 
 	static HttpRequest create(HttpReader input) throws IOException {
 		HttpRequest req = new HttpRequest();
@@ -30,35 +36,35 @@ public class HttpRequest {
 
 	void read(HttpReader input) throws IOException {
 		parseRequestLine(input.readLine());
-
-		Splitter headerSplitter = Splitter.on(':').trimResults();
 		for (;;) {
 			String line = input.readLine();
 			if (line.isEmpty()) {
 				break;
 			}
-			List<String> header = headerSplitter.splitToList(line);
-			String key = header.get(0);
-			String value = header.get(1);
-			headers.put(key, value);
+			TokenParser header = new TokenParser(line);
+			String key = header.getNext(':').trim();
+			String value = header.remainder().trim();
+
 			if (key.equals(HttpHeaders.COOKIE)) {
 				cookies = parseCookies(value);
+			} else {
+				headers.put(key, value);
 			}
 		}
-		
 		Integer contentLength = contentLength();
 		if (contentLength != null) {
 			content = input.streamContent(contentLength);
-		} else if (headers.get(HttpHeaders.TRANSFER_ENCODING).equals("Chunked")) {
+		} else if (CHUNKED.equals(headers.get(HttpHeaders.TRANSFER_ENCODING))) {
 			content = input.streamChunked();
 		}
 	}
 
 	private void parseRequestLine(String requestLine) {
-		List<String> requestParts = Splitter.on(' ').splitToList(requestLine);
-		method = HttpMethod.valueOf(requestParts.get(0));
-		String requestUri = requestParts.get(1);
-		httpVersion = requestParts.get(2);
+		Iterator<String> requestParts = Splitter.on(' ').split(requestLine).iterator();
+		method = HttpMethod.valueOf(requestParts.next());
+		String requestUri = requestParts.next();
+		httpVersion = requestParts.next();
+
 		int queryIndex = requestUri.indexOf('?');
 		if (queryIndex == -1) {
 			path = requestUri;
@@ -71,10 +77,9 @@ public class HttpRequest {
 
 	private Map<String, String> parseCookies(String value) {
 		Map<String, String> cookies = new LinkedHashMap<>();
-		Splitter cookieSplitter = Splitter.on('=').trimResults();
-		for (String cookie : Splitter.on(';').split(value)) {
-			List<String> parts = cookieSplitter.splitToList(cookie);
-			cookies.put(parts.get(0), parts.get(1));
+		TokenParser parser = new TokenParser(value);
+		while (parser.hasNext()) {
+			cookies.put(parser.getNext('='), parser.getNext(';'));
 		}
 		return cookies;
 	}
@@ -115,8 +120,22 @@ public class HttpRequest {
 		return cookies;
 	}
 
-	public ReadableInputStream content() {
+	public InputStream payload() {
 		return content;
+	}
+
+	public String readPayload(Charset charset) throws IOException {
+		Integer length = contentLength();
+		if (length == null) {
+			throw new IllegalStateException();
+		}
+		byte[] payload = new byte[length];
+		ByteStreams.readFully(content, payload);
+		return new String(payload, charset);
+	}
+
+	public String readPayload() throws IOException {
+		return readPayload(StandardCharsets.UTF_8);
 	}
 
 	public Integer contentLength() {

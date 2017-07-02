@@ -34,7 +34,7 @@ public class HttpReader {
 		}
 	}
 
-	public ReadableInputStream streamContent(int count) {
+	public InputStream streamContent(int count) {
 		return new ContentInputStream(count);
 	}
 
@@ -42,7 +42,7 @@ public class HttpReader {
 		return new ChunkedInputStream();
 	}
 
-	public class ContentInputStream extends ReadableInputStream {
+	public class ContentInputStream extends InputStream {
 
 		private long remaining;
 

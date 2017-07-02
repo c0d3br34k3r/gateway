@@ -1,10 +1,10 @@
 package server;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
 
 public final class QueryParser {
@@ -20,7 +20,7 @@ public final class QueryParser {
 				builder.put(key, value);
 			}
 		});
-		return ImmutableMap.copyOf(builder);
+		return Collections.unmodifiableMap(builder);
 	}
 
 	public static ListMultimap<String, String> toMultimap(String query) {

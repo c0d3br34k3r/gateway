@@ -4,6 +4,8 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import com.google.common.io.ByteStreams;
+
 public class ContentTest {
 
 	public static void main(String[] args) throws IOException {
@@ -22,7 +24,7 @@ public class ContentTest {
 			System.out.println("LINE: " + line);
 		}
 
-		System.out.println(http.streamChunked().getText());
+		System.out.println(new String(ByteStreams.toByteArray(http.streamChunked())));
 		System.out.println(stream.read());
 	}
 

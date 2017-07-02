@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Splitter;
@@ -15,7 +17,7 @@ import com.google.common.io.BaseEncoding;
 import com.google.common.net.HttpHeaders;
 
 import server.HttpReader;
-import server.HttpStatus;
+import server.StandardHttpStatus;
 
 public abstract class WebsocketServer implements Closeable {
 
@@ -34,14 +36,15 @@ public abstract class WebsocketServer implements Closeable {
 		Socket socket = server.accept();
 		HttpReader in = new HttpReader(socket.getInputStream());
 		String requestLine = in.readLine();
-		Map<String, String> headers = in.readHeaders();
+		Map<String, String> headers = readHeaders(in);
 		String requestUri = Splitter.on(' ').splitToList(requestLine).get(1);
 		String key = headers.get(WEBSOCKET_KEY);
 		if (key == null) {
 			throw new IOException("No websocket accept key found.");
 		}
-		String acceptKey = BASE64.encode(Hashing.sha1().hashString(key + WEBSOCKET_GUID, US_ASCII).asBytes());
-		String reply = HttpStatus._101_SWITCHING_PROTOCOLS + CRLF
+		String acceptKey =
+				BASE64.encode(Hashing.sha1().hashString(key + WEBSOCKET_GUID, US_ASCII).asBytes());
+		String reply = StandardHttpStatus._101_SWITCHING_PROTOCOLS + CRLF
 				+ HttpHeaders.UPGRADE + ": websocket" + CRLF
 				+ HttpHeaders.CONNECTION + ": Upgrade" + CRLF
 				+ "Sec-WebSocket-Accept: " + acceptKey + CRLF
@@ -61,6 +64,20 @@ public abstract class WebsocketServer implements Closeable {
 
 	public boolean isClosed() {
 		return server.isClosed();
+	}
+
+	private static Map<String, String> readHeaders(HttpReader in) throws IOException {
+		Map<String, String> headers = new LinkedHashMap<>();
+		Splitter headerSplitter = Splitter.on(':').trimResults();
+		for (;;) {
+			String line = in.readLine();
+			if (line.isEmpty()) {
+				break;
+			}
+			List<String> header = headerSplitter.splitToList(line);
+			headers.put(header.get(0), header.get(1));
+		}
+		return headers;
 	}
 
 }
