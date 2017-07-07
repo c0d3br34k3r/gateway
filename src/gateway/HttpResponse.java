@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
+import org.joda.time.DateTime;
+
 import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
 
@@ -50,7 +52,8 @@ public class HttpResponse {
 		setHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(bytes.length));
 		content = new Content() {
 
-			@Override public void write(OutputStream out) throws IOException {
+			@Override
+			public void write(OutputStream out) throws IOException {
 				out.write(bytes);
 			}
 		};
@@ -59,14 +62,21 @@ public class HttpResponse {
 
 	public HttpResponse setContent(final Path file) throws IOException {
 		setHeader(HttpHeaders.CONTENT_LENGTH, Long.toString(Files.size(file)));
+		setLastModified(new DateTime(Files.getLastModifiedTime(file).toMillis()));
 		content = new Content() {
 
-			@Override public void write(OutputStream out) throws IOException {
+			@Override
+			public void write(OutputStream out) throws IOException {
 				try (InputStream in = Files.newInputStream(file)) {
 					ByteStreams.copy(in, out);
 				}
 			}
 		};
+		return this;
+	}
+
+	public HttpResponse setLastModified(DateTime time) {
+		setHeader(HttpHeaders.LAST_MODIFIED, HttpDateTimeFormat.toString(time));
 		return this;
 	}
 
@@ -119,7 +129,8 @@ public class HttpResponse {
 			this.bufferSize = bufferSize;
 		}
 
-		@Override public void write(OutputStream out) throws IOException {
+		@Override
+		public void write(OutputStream out) throws IOException {
 			try (InputStream in = input) {
 				byte[] buf = new byte[bufferSize];
 				for (;;) {
@@ -138,7 +149,8 @@ public class HttpResponse {
 
 	private static final Content NO_CONTENT = new Content() {
 
-		@Override public void write(OutputStream out) {
+		@Override
+		public void write(OutputStream out) {
 			// Do nothing
 		}
 	};

@@ -39,13 +39,15 @@ public class CharsetOutputStream extends OutputStream {
 		buf = Arrays.copyOf(buf, newCapacity);
 	}
 
-	@Override public void write(int b) {
+	@Override
+	public void write(int b) {
 		ensureCapacity(count + 1);
 		buf[count] = (byte) b;
 		count += 1;
 	}
 
-	@Override public void write(byte b[], int off, int len) {
+	@Override
+	public void write(byte b[], int off, int len) {
 		ensureCapacity(count + len);
 		System.arraycopy(b, off, buf, count, len);
 		count += len;
@@ -67,10 +69,12 @@ public class CharsetOutputStream extends OutputStream {
 		return new String(buf, 0, count, charset);
 	}
 
-	@Override public String toString() {
+	@Override
+	public String toString() {
 		return toString(StandardCharsets.UTF_8);
 	}
 
-	@Override public void close() {}
+	@Override
+	public void close() {}
 
 }

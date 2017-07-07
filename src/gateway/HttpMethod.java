@@ -11,5 +11,5 @@ public enum HttpMethod {
 	OPTIONS,
 	CONNECT,
 	PATCH;
-	
+
 }

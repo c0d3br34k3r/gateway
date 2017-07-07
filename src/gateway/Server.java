@@ -10,26 +10,28 @@ public class Server {
 	public static void main(String[] args) throws IOException {
 		new Thread(new Runnable() {
 
-			@Override public void run() {
+			@Override
+			public void run() {
 				ServerSocket server;
 				try {
 					server = new ServerSocket(3637);
 				} catch (IOException e) {
 					return;
 				}
-				for(;;) {
+				for (;;) {
 					try {
 						final Socket client = server.accept();
 						new Thread(new Runnable() {
 
-							@Override public void run() {
+							@Override
+							public void run() {
 								try {
 									client.close();
 								} catch (IOException e) {
-									
+
 								}
 							}
-							
+
 						}).start();
 					} catch (IOException e) {
 						// continue
@@ -37,10 +39,10 @@ public class Server {
 				}
 			}
 		}).start();
-		
+
 		InputStream inputStream = new Socket("127.0.0.1", 3637).getInputStream();
 		for (;;) {
-			
+
 		}
 	}
 

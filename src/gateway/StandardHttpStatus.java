@@ -135,15 +135,18 @@ public enum StandardHttpStatus implements HttpStatus {
 		this.title = message;
 	}
 
-	@Override public int code() {
+	@Override
+	public int code() {
 		return code;
 	}
 
-	@Override public String title() {
+	@Override
+	public String title() {
 		return title;
 	}
 
-	@Override public String toString() {
+	@Override
+	public String toString() {
 		return "HTTP/1.1 " + code + ' ' + title;
 	}
 

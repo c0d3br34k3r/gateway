@@ -24,10 +24,6 @@ public class CookieBuilder {
 	public static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
 	public static final CharMatcher ATTRIBUTE = asciiExceptFor(";");
 
-	private static final DateTimeFormatter DATE_TIME =
-			DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'")
-					.withZoneUTC().withLocale(Locale.US);
-
 	private static CharMatcher asciiExceptFor(String disallowed) {
 		return CharMatcher.inRange('\u0020', '\u007E')
 				.and(CharMatcher.noneOf(disallowed));
@@ -116,7 +112,7 @@ public class CookieBuilder {
 		List<String> parts = new ArrayList<>();
 		parts.add(name + '=' + value);
 		if (expires != null) {
-			addProperty(parts, EXPIRES, DATE_TIME.print(expires));
+			addProperty(parts, EXPIRES, DateTimeFormat.DATE_TIME.print(expires));
 		}
 		if (maxAge != 0) {
 			addProperty(parts, MAX_AGE, maxAge);
@@ -141,10 +137,9 @@ public class CookieBuilder {
 		parts.add(key + '=' + value);
 	}
 
-	@Override public String toString() {
+	@Override
+	public String toString() {
 		return build();
 	}
-	
-	
 
 }

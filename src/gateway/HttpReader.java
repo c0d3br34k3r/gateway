@@ -50,11 +50,13 @@ public class HttpReader {
 			this.remaining = limit;
 		}
 
-		@Override public int available() throws IOException {
+		@Override
+		public int available() throws IOException {
 			return (int) Math.min(in.available(), remaining);
 		}
 
-		@Override public int read() throws IOException {
+		@Override
+		public int read() throws IOException {
 			if (remaining == 0) {
 				return -1;
 			}
@@ -65,7 +67,8 @@ public class HttpReader {
 			return result;
 		}
 
-		@Override public int read(byte[] b, int off, int len) throws IOException {
+		@Override
+		public int read(byte[] b, int off, int len) throws IOException {
 			if (remaining == 0) {
 				return -1;
 			}
@@ -76,13 +79,15 @@ public class HttpReader {
 			return result;
 		}
 
-		@Override public long skip(long n) throws IOException {
+		@Override
+		public long skip(long n) throws IOException {
 			long skipped = in.skip(Math.min(n, remaining));
 			remaining -= skipped;
 			return skipped;
 		}
 
-		@Override public void close() throws IOException {
+		@Override
+		public void close() throws IOException {
 			ByteStreams.skipFully(in, remaining);
 			remaining = 0;
 		}
@@ -97,7 +102,8 @@ public class HttpReader {
 			this.remaining = Integer.parseInt(readLine(), 16);
 		}
 
-		@Override public int read() throws IOException {
+		@Override
+		public int read() throws IOException {
 			if (end) {
 				return -1;
 			}
@@ -109,7 +115,8 @@ public class HttpReader {
 			return in.read();
 		}
 
-		@Override public int read(byte[] b, int off, int len) throws IOException {
+		@Override
+		public int read(byte[] b, int off, int len) throws IOException {
 			if (len == 0) {
 				return 0;
 			}
@@ -125,17 +132,20 @@ public class HttpReader {
 			return read;
 		}
 
-		@Override public long skip(long n) throws IOException {
+		@Override
+		public long skip(long n) throws IOException {
 			long skipped = in.skip(Math.min(n, remaining));
 			remaining -= skipped;
 			return skipped;
 		}
 
-		@Override public int available() throws IOException {
+		@Override
+		public int available() throws IOException {
 			return (int) Math.min(in.available(), remaining);
 		}
 
-		@Override public void close() throws IOException {
+		@Override
+		public void close() throws IOException {
 			while (!end) {
 				ByteStreams.skipFully(in, remaining);
 				nextChunk();

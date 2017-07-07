@@ -1,0 +1,74 @@
+package gateway;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+
+import com.google.common.base.Supplier;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
+
+public class HttpDateTimeFormat {
+
+	private static final DateTimeFormatter FORMAT =
+			DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'")
+					.withZoneUTC().withLocale(Locale.US);
+
+	private static final int BUFFER_SIZE = 0x1000;
+
+	public static String print(DateTime time) {
+		return FORMAT.print(time);
+	}
+	
+	public static DateTime parse(String time) {
+		return FORMAT.parseDateTime(time);
+	}
+
+	public static String hashMd5(Path path) throws IOException {
+		try (InputStream in = Files.newInputStream(path)) {
+			return hashMd5(in);
+		}
+	}
+
+	public static String hashMd5(InputStream in) throws IOException {
+		byte[] buffer = new byte[BUFFER_SIZE];
+		Hasher hasher = Hashing.md5().newHasher();
+		for (;;) {
+			int r = in.read(buffer);
+			if (r == -1) {
+				break;
+			}
+			hasher.putBytes(buffer, 0, r);
+		}
+		return hasher.hash().toString();
+	}
+
+	public static <T> Supplier<T> forName(String className) {
+		final Class<T> clazz;
+		try {
+			@SuppressWarnings("unchecked")
+			Class<T> cast = (Class<T>) Class.forName(className);
+			clazz = cast;
+		} catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException(e);
+		}
+		return new Supplier<T>() {
+
+			@Override
+			public T get() {
+				try {
+					return clazz.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new IllegalArgumentException(e);
+				}
+			}
+		};
+	}
+
+}
