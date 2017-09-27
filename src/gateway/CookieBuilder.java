@@ -2,11 +2,8 @@ package gateway;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
@@ -53,7 +50,7 @@ public class CookieBuilder {
 	private static String checkChars(String s, CharMatcher matcher) {
 		if (!matcher.matchesAllOf(s)) {
 			throw new IllegalArgumentException(
-					String.format("invalid chars <%s> in <%s>", matcher.retainFrom(s), s));
+					String.format("invalid chars %s in %s", matcher.retainFrom(s), s));
 		}
 		return s;
 	}
@@ -112,7 +109,7 @@ public class CookieBuilder {
 		List<String> parts = new ArrayList<>();
 		parts.add(name + '=' + value);
 		if (expires != null) {
-			addProperty(parts, EXPIRES, DateTimeFormat.DATE_TIME.print(expires));
+			addProperty(parts, EXPIRES, HttpDateTimeFormat.print(expires));
 		}
 		if (maxAge != 0) {
 			addProperty(parts, MAX_AGE, maxAge);

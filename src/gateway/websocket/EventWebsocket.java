@@ -3,11 +3,9 @@ package gateway.websocket;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import gateway.CharsetOutputStream;
-
 public abstract class EventWebsocket extends AbstractWebsocket {
 
-	private CharsetOutputStream currentMessage = new CharsetOutputStream();
+	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 

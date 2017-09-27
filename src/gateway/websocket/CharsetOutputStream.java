@@ -1,20 +1,20 @@
-package gateway;
+package gateway.websocket;
 
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class CharsetOutputStream extends OutputStream {
+class CharsetOutputStream extends OutputStream {
 
-	protected byte buf[];
-	protected int count;
+	private byte buf[];
+	private int count;
 
-	public CharsetOutputStream() {
+	CharsetOutputStream() {
 		this(32);
 	}
 
-	public CharsetOutputStream(int size) {
+	CharsetOutputStream(int size) {
 		buf = new byte[size];
 	}
 
@@ -53,19 +53,19 @@ public class CharsetOutputStream extends OutputStream {
 		count += len;
 	}
 
-	public void reset() {
+	void reset() {
 		count = 0;
 	}
 
-	public byte[] toByteArray() {
+	byte[] toByteArray() {
 		return Arrays.copyOf(buf, count);
 	}
 
-	public int size() {
+	int size() {
 		return count;
 	}
 
-	public String toString(Charset charset) {
+	String toString(Charset charset) {
 		return new String(buf, 0, count, charset);
 	}
 

@@ -25,7 +25,7 @@ public class HttpDateTimeFormat {
 	public static String print(DateTime time) {
 		return FORMAT.print(time);
 	}
-	
+
 	public static DateTime parse(String time) {
 		return FORMAT.parseDateTime(time);
 	}
@@ -34,6 +34,21 @@ public class HttpDateTimeFormat {
 		try (InputStream in = Files.newInputStream(path)) {
 			return hashMd5(in);
 		}
+	}
+
+	/**
+	 * Returns the last modified time of the file as a DateTime, rounding the
+	 * seconds field down (effectively setting the milliseconds field to 0).
+	 * This provides interoperability with the {@code If-Modified-Since} header,
+	 * which does not retain the precision of milliseconds.
+	 * 
+	 * @param file the location of the file
+	 * @return the last modified time of the file
+	 * @throws IOException if an I/O error occurs
+	 */
+	public static DateTime getLastModifiedTime(Path file) throws IOException {
+		return new DateTime(Files.getLastModifiedTime(file).toMillis())
+				.secondOfMinute().roundFloorCopy();
 	}
 
 	public static String hashMd5(InputStream in) throws IOException {

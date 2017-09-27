@@ -17,7 +17,7 @@ import com.google.common.io.BaseEncoding;
 import com.google.common.net.HttpHeaders;
 
 import gateway.HttpReader;
-import gateway.StandardHttpStatus;
+import gateway.HttpStatus;
 
 public abstract class WebsocketServer implements Closeable {
 
@@ -44,7 +44,7 @@ public abstract class WebsocketServer implements Closeable {
 		}
 		String acceptKey =
 				BASE64.encode(Hashing.sha1().hashString(key + WEBSOCKET_GUID, US_ASCII).asBytes());
-		String reply = StandardHttpStatus._101_SWITCHING_PROTOCOLS + CRLF
+		String reply = HttpStatus._101_SWITCHING_PROTOCOLS + CRLF
 				+ HttpHeaders.UPGRADE + ": websocket" + CRLF
 				+ HttpHeaders.CONNECTION + ": Upgrade" + CRLF
 				+ "Sec-WebSocket-Accept: " + acceptKey + CRLF

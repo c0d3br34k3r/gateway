@@ -16,7 +16,8 @@ public final class QueryParser {
 		final Map<String, String> builder = new LinkedHashMap<>();
 		parse(query, new MapBuilder() {
 
-			@Override public void put(String key, String value) {
+			@Override
+			public void put(String key, String value) {
 				builder.put(key, value);
 			}
 		});
@@ -28,7 +29,8 @@ public final class QueryParser {
 				ImmutableListMultimap.builder();
 		parse(query, new MapBuilder() {
 
-			@Override public void put(String key, String value) {
+			@Override
+			public void put(String key, String value) {
 				builder.put(key, value);
 			}
 		});
@@ -42,7 +44,7 @@ public final class QueryParser {
 		StringBuilder current = key;
 		int i = 0;
 		while (i < query.length()) {
-			char c = query.charAt(i++);
+			char c = query.charAt(i);
 			switch (c) {
 				case '=':
 					current = value;
@@ -57,12 +59,13 @@ public final class QueryParser {
 					current.append(' ');
 					break;
 				case '%':
-					current.append((char) Integer.parseInt(query.substring(i, i + 2), 16));
+					current.append((char) Integer.parseInt(query.substring(i + 1, i + 3), 16));
 					i += 2;
 					break;
 				default:
 					current.append(c);
 			}
+			i++;
 		}
 		builder.put(key.toString(), value.toString());
 	}

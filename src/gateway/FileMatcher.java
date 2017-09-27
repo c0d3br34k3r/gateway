@@ -19,7 +19,7 @@ public class FileMatcher implements Predicate<String> {
 		List<String> parts = WILDCARDS.splitToList(pattern);
 		switch (parts.size()) {
 			case 0:
-				throw new IllegalArgumentException();
+				throw new AssertionError();
 			case 1:
 				return Predicates.equalTo(parts.get(0));
 			default:

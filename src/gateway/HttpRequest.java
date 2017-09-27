@@ -7,7 +7,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.joda.time.DateTime;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Multimap;
@@ -19,6 +22,7 @@ public class HttpRequest {
 	private static final String CHUNKED = "Chunked";
 
 	private HttpMethod method;
+	private String requestUri;
 	private String path;
 	private String query;
 	private String httpVersion;
@@ -28,9 +32,9 @@ public class HttpRequest {
 
 	private HttpRequest() {}
 
-	static HttpRequest create(HttpReader input) throws IOException {
+	static HttpRequest read(InputStream in) throws IOException {
 		HttpRequest req = new HttpRequest();
-		req.read(input);
+		req.read(new HttpReader(in));
 		return req;
 	}
 
@@ -62,7 +66,7 @@ public class HttpRequest {
 	private void parseRequestLine(String requestLine) {
 		Iterator<String> requestParts = Splitter.on(' ').split(requestLine).iterator();
 		method = HttpMethod.valueOf(requestParts.next());
-		String requestUri = requestParts.next();
+		requestUri = requestParts.next();
 		httpVersion = requestParts.next();
 
 		int queryIndex = requestUri.indexOf('?');
@@ -95,6 +99,10 @@ public class HttpRequest {
 	public String query() {
 		return query;
 	}
+	
+	public List<String> parsePath() {
+		return PathParser.parse(path);
+	}
 
 	public Map<String, String> parseQuery() {
 		return QueryParser.toMap(query);
@@ -110,6 +118,11 @@ public class HttpRequest {
 
 	public String getHeader(String key) {
 		return headers.get(key);
+	}
+	
+	public DateTime getHeaderAsDateTime(String key) {
+		String value = headers.get(key);
+		return value == null ? null : HttpDateTimeFormat.parse(value);
 	}
 
 	public Map<String, String> headers() {
@@ -146,5 +159,12 @@ public class HttpRequest {
 		String value = headers.get(header);
 		return value == null ? null : Integer.parseInt(value);
 	}
+
+	@Override
+	public String toString() {
+		return method + " " + requestUri + " " + httpVersion;
+	}
+	
+	
 
 }

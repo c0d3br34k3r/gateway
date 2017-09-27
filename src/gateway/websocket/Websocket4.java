@@ -11,8 +11,6 @@ import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
-import gateway.CharsetOutputStream;
-
 public abstract class Websocket4 implements Closeable {
 
 	// Opcodes
@@ -43,7 +41,7 @@ public abstract class Websocket4 implements Closeable {
 
 	private final Socket socket;
 
-	private CharsetOutputStream currentMessage = new CharsetOutputStream();
+	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 	

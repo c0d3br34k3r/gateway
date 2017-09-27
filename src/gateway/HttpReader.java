@@ -2,7 +2,6 @@ package gateway;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
@@ -18,19 +17,18 @@ public class HttpReader {
 	}
 
 	public String readLine() throws IOException {
-		@SuppressWarnings("resource")
-		CharsetOutputStream lineBuilder = new CharsetOutputStream();
+		StringBuilder builder = new StringBuilder();
 		for (;;) {
 			int b = in.read();
 			if (b == '\r') {
 				if (in.read() != '\n') {
 					throw new IOException();
 				}
-				return lineBuilder.toString(StandardCharsets.US_ASCII);
+				return builder.toString();
 			} else if (b == -1) {
 				throw new IOException();
 			}
-			lineBuilder.write(b);
+			builder.append((char) b);
 		}
 	}
 

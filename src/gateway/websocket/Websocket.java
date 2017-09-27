@@ -10,8 +10,6 @@ import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
-import gateway.CharsetOutputStream;
-
 public abstract class Websocket implements Runnable {
 
 	/**
@@ -79,7 +77,7 @@ public abstract class Websocket implements Runnable {
 	private static final int MID_MESSAGE_MAX_SIZE = 65535;
 	// No real max for large messages
 
-	private CharsetOutputStream currentMessage = new CharsetOutputStream();
+	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 
