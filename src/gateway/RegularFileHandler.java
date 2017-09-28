@@ -13,10 +13,10 @@ public class RegularFileHandler extends Handler {
 	@Override
 	public void get(Path file, HttpRequest request, HttpResponse response) throws IOException {
 		if (!Files.exists(file)) {
-			response.setStatus(HttpStatus._404_NOT_FOUND);
+			new _404Handler().get(file, request, response);
 			return;
 		}
-		DateTime modifiedTime = new DateTime(Files.getLastModifiedTime(file).toMillis());
+		DateTime modifiedTime = HttpDateTimeFormat.getLastModifiedTime(file);
 		DateTime ifModifiedSince = request.getHeaderAsDateTime(HttpHeaders.IF_MODIFIED_SINCE);
 		if (ifModifiedSince != null && !modifiedTime.isAfter(ifModifiedSince)) {
 			response.setStatus(HttpStatus._304_NOT_MODIFIED);

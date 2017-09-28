@@ -77,7 +77,7 @@ public abstract class Websocket implements Runnable {
 	private static final int MID_MESSAGE_MAX_SIZE = 65535;
 	// No real max for large messages
 
-	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
+	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 

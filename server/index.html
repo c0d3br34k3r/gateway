@@ -10,8 +10,8 @@
 			app.controller('Controller', function($scope, $http) {
 				
 				$scope.post = function() {
-					$http.post('index.html', 'testing').then(function(thing) {
-						alert('<' + thing.data + '>');
+					$http.post('index.html', 'testing').then(function(response) {
+						alert(response.data);
 					}, function() {
 						alert('failure');
 					});

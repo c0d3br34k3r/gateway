@@ -68,7 +68,6 @@ public class HttpRequest {
 		method = HttpMethod.valueOf(requestParts.next());
 		requestUri = requestParts.next();
 		httpVersion = requestParts.next();
-
 		int queryIndex = requestUri.indexOf('?');
 		if (queryIndex == -1) {
 			path = requestUri;
@@ -99,7 +98,7 @@ public class HttpRequest {
 	public String query() {
 		return query;
 	}
-	
+
 	public List<String> parsePath() {
 		return PathParser.parse(path);
 	}
@@ -119,7 +118,7 @@ public class HttpRequest {
 	public String getHeader(String key) {
 		return headers.get(key);
 	}
-	
+
 	public DateTime getHeaderAsDateTime(String key) {
 		String value = headers.get(key);
 		return value == null ? null : HttpDateTimeFormat.parse(value);
@@ -133,11 +132,15 @@ public class HttpRequest {
 		return cookies;
 	}
 
-	public InputStream payload() {
+	public boolean hasContent() {
+		return content != null;
+	}
+
+	public InputStream content() {
 		return content;
 	}
 
-	public String readPayload(Charset charset) throws IOException {
+	public String readContent(Charset charset) throws IOException {
 		Integer length = contentLength();
 		if (length == null) {
 			throw new IllegalStateException();
@@ -147,8 +150,8 @@ public class HttpRequest {
 		return new String(payload, charset);
 	}
 
-	public String readPayload() throws IOException {
-		return readPayload(StandardCharsets.UTF_8);
+	public String readContent() throws IOException {
+		return readContent(StandardCharsets.UTF_8);
 	}
 
 	public Integer contentLength() {
@@ -164,7 +167,5 @@ public class HttpRequest {
 	public String toString() {
 		return method + " " + requestUri + " " + httpVersion;
 	}
-	
-	
 
 }

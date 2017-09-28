@@ -1,68 +1,17 @@
 package gateway.websocket;
 
-import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
-class CharsetOutputStream extends OutputStream {
-
-	private byte buf[];
-	private int count;
+class CharsetOutputStream extends ByteArrayOutputStream {
 
 	CharsetOutputStream() {
 		this(32);
 	}
 
 	CharsetOutputStream(int size) {
-		buf = new byte[size];
-	}
-
-	private void ensureCapacity(int minCapacity) {
-		if (minCapacity - buf.length > 0) {
-			grow(minCapacity);
-		}
-	}
-
-	private void grow(int minCapacity) {
-		int oldCapacity = buf.length;
-		int newCapacity = oldCapacity << 1;
-		if (newCapacity - minCapacity < 0) {
-			newCapacity = minCapacity;
-		}
-		if (newCapacity < 0) {
-			if (minCapacity < 0) {
-				throw new OutOfMemoryError();
-			}
-			newCapacity = Integer.MAX_VALUE;
-		}
-		buf = Arrays.copyOf(buf, newCapacity);
-	}
-
-	@Override
-	public void write(int b) {
-		ensureCapacity(count + 1);
-		buf[count] = (byte) b;
-		count += 1;
-	}
-
-	@Override
-	public void write(byte b[], int off, int len) {
-		ensureCapacity(count + len);
-		System.arraycopy(b, off, buf, count, len);
-		count += len;
-	}
-
-	void reset() {
-		count = 0;
-	}
-
-	byte[] toByteArray() {
-		return Arrays.copyOf(buf, count);
-	}
-
-	int size() {
-		return count;
+		super(size);
 	}
 
 	String toString(Charset charset) {

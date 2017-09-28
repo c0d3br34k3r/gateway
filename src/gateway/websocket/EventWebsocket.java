@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 public abstract class EventWebsocket extends AbstractWebsocket {
 
-	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
+	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 

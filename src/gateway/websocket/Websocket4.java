@@ -41,7 +41,7 @@ public abstract class Websocket4 implements Closeable {
 
 	private final Socket socket;
 
-	private CharsetOutputStream2 currentMessage = new CharsetOutputStream2();
+	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
 	private boolean messageIsText;
 	
