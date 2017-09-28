@@ -10,9 +10,11 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Supplier;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
+import com.google.common.io.ByteSource;
 
 public class HttpDateTimeFormat {
 
@@ -62,6 +64,35 @@ public class HttpDateTimeFormat {
 			hasher.putBytes(buffer, 0, r);
 		}
 		return hasher.hash().toString();
+	}
+
+	public static ByteSource pathAsByteSource(final Path file) {
+		return new ByteSource() {
+
+			@Override
+			public InputStream openStream() throws IOException {
+				return Files.newInputStream(file);
+			}
+
+			@Override
+			public Optional<Long> sizeIfKnown() {
+				try {
+					return Optional.of(Files.size(file));
+				} catch (IOException e) {
+					return Optional.absent();
+				}
+			}
+
+			@Override
+			public long size() throws IOException {
+				return Files.size(file);
+			}
+
+			@Override
+			public byte[] read() throws IOException {
+				return Files.readAllBytes(file);
+			}
+		};
 	}
 
 	public static <T> Supplier<T> forName(String className) {
