@@ -12,11 +12,13 @@ public abstract class BlockingWebsocket extends Websocket {
 
 	private BlockingQueue<String> queue;
 
-	@Override protected void onMessage(String text) {
+	@Override
+	protected void onMessage(String text) {
 		queue.add(text);
 	}
 
-	@Override protected void onMessage(byte[] bytes) {
+	@Override
+	protected void onMessage(byte[] bytes) {
 		try {
 			sendClose(1003, "This websocket only accepts text data.");
 		} catch (IOException e) {
@@ -28,12 +30,15 @@ public abstract class BlockingWebsocket extends Websocket {
 		return queue.take();
 	}
 
-	@Override protected void onClose(int code, String message) {
+	@Override
+	protected void onClose(int code, String message) {
 		queue.add(null);
 	}
 
-	public static abstract class Message {
-
+	public static class Message {
+		public enum Type {
+			TEXT, BINARY, CLOSE;
+		}
 	}
 
 }

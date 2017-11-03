@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PushbackInputStream;
-import java.nio.charset.StandardCharsets;
 
 import com.google.common.io.ByteStreams;
 
@@ -63,7 +62,7 @@ public abstract class Websocket implements Runnable {
 	private static final int OPCODE_MASK = 0xF;
 	private static final int LENGTH_MASK = 0x7F;
 
-	private static final int NUM_MASKS = 4;
+	private static final int MASKS_LENGTH = 4;
 
 	// In case of small length, the code is the length.
 	private static final int MID_LENGTH_CODE = 126;
@@ -77,9 +76,11 @@ public abstract class Websocket implements Runnable {
 	private static final int MID_MESSAGE_MAX_SIZE = 65535;
 	// No real max for large messages
 
+	private static final int NO_STATUS_CODE = 1005;
+
 	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
-	private boolean messageIsText;
+	private int messageType;
 
 	private boolean receivedClose; // = false
 	private boolean sentClose; // = false
@@ -126,10 +127,10 @@ public abstract class Websocket implements Runnable {
 			fin = (finOpcode & FIN_BIT) == FIN_BIT;
 			int opcode = finOpcode & OPCODE_MASK;
 			int payloadSize = readLength(in);
-			byte[] masks = readBytes(in, NUM_MASKS);
+			byte[] masks = readBytes(in, MASKS_LENGTH);
 			byte[] payload = readBytes(in, payloadSize);
 			for (int i = 0; i < payloadSize; i++) {
-				payload[i] ^= masks[i % NUM_MASKS];
+				payload[i] ^= masks[i % MASKS_LENGTH];
 			}
 			if (!inProgress && opcode == CONTINUATION) {
 				throw new WebsocketProtocolException("unstarted continuation");
@@ -142,13 +143,29 @@ public abstract class Websocket implements Runnable {
 		} while (!fin);
 	}
 
+	private void handleUnfinished(int opcode, byte[] payload) throws IOException {
+		switch (opcode) {
+			case TEXT:
+			case BINARY:
+				beginMessage(opcode);
+				break;
+			case CONTINUATION:
+				break;
+			default:
+				throw new WebsocketProtocolException(
+						"opcode " + opcode + " must have fin set or is unknown");
+		}
+		inProgress = true;
+		currentMessage.write(payload);
+	}
+
 	private void handleFinished(int opcode, byte[] payload) throws IOException {
 		switch (opcode) {
 			case CONTINUATION:
 				handleFinalContinuation(payload);
 				break;
 			case TEXT:
-				onMessage(new String(payload, StandardCharsets.UTF_8));
+				onMessage(new String(payload, UTF_8));
 				break;
 			case BINARY:
 				onMessage(payload);
@@ -168,34 +185,16 @@ public abstract class Websocket implements Runnable {
 		inProgress = false;
 	}
 
-	private void handleUnfinished(int opcode, byte[] payload) throws IOException {
-		switch (opcode) {
-			case TEXT:
-				beginMessage(true);
-				break;
-			case BINARY:
-				beginMessage(false);
-				break;
-			case CONTINUATION:
-				break;
-			default:
-				throw new WebsocketProtocolException(
-						"opcode " + opcode + " must have fin set or is unknown");
-		}
-		inProgress = true;
-		currentMessage.write(payload);
-	}
-
-	private void beginMessage(boolean isText) throws IOException {
+	private void beginMessage(int type) throws IOException {
 		if (inProgress) {
 			throw new WebsocketProtocolException("message in progress");
 		}
-		this.messageIsText = isText;
+		this.messageType = type;
 	}
 
 	private void handleFinalContinuation(byte[] payload) throws IOException {
 		currentMessage.write(payload);
-		if (messageIsText) {
+		if (messageType == TEXT) {
 			onMessage(currentMessage.toString());
 		} else {
 			onMessage(currentMessage.toByteArray());
@@ -209,14 +208,15 @@ public abstract class Websocket implements Runnable {
 			if (!sentClose) {
 				sendClose(payload);
 			}
+			closeConnection();
 		}
 		int code;
 		String message;
 		if (payload.length >= 2) {
 			code = ((payload[0] & 0xFF) << Byte.SIZE) | (payload[1] & 0xFF);
-			message = new String(payload, 2, payload.length - 2, StandardCharsets.UTF_8);
+			message = new String(payload, 2, payload.length - 2, UTF_8);
 		} else {
-			code = 1005;
+			code = NO_STATUS_CODE;
 			message = "";
 		}
 		onClose(code, message);
@@ -259,8 +259,7 @@ public abstract class Websocket implements Runnable {
 	 * 
 	 * @param message the text content of the message
 	 * @throws IOException if an I/O error occurs while sending the message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
+	 * @throws ConnectionClosedException if the connection is closed
 	 */
 	public final void send(String message) throws IOException {
 		sendMessage(TEXT, message.getBytes(UTF_8));
@@ -271,8 +270,7 @@ public abstract class Websocket implements Runnable {
 	 * 
 	 * @param message the binary content of the message
 	 * @throws IOException if an I/O error occurs while sending the message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
+	 * @throws ConnectionClosedException if the connection is closed
 	 */
 	public final void send(byte[] message) throws IOException {
 		sendMessage(BINARY, message);
@@ -291,8 +289,10 @@ public abstract class Websocket implements Runnable {
 			throws IOException {
 		int read = pushback.read(buffer);
 		int next = pushback.read();
-		pushback.unread(next);
 		boolean fin = next == -1;
+		if (!fin) {
+			pushback.unread(next);
+		}
 		sendFrame(fin, opcode, buffer, 0, read);
 		return fin;
 	}
@@ -302,6 +302,7 @@ public abstract class Websocket implements Runnable {
 	 * 
 	 * @throws IOException if an I/O error occurs while sending the close
 	 *         message
+	 * @throws ConnectionClosedException if the connection is already closed
 	 */
 	public final void sendClose() throws IOException {
 		sendClose(new byte[0]);
@@ -313,8 +314,7 @@ public abstract class Websocket implements Runnable {
 	 * @param code the close code
 	 * @throws IOException if an I/O error occurs while sending the close
 	 *         message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
+	 * @throws ConnectionClosedException if the connection is already closed
 	 */
 	public final void sendClose(int code) throws IOException {
 		sendClose(code, "");
@@ -327,8 +327,7 @@ public abstract class Websocket implements Runnable {
 	 * @param message the close message
 	 * @throws IOException if an I/O error occurs while sending the close
 	 *         message
-	 * @throws WebsocketProtocolException if a close frame has been sent or
-	 *         received
+	 * @throws ConnectionClosedException if the connection is already closed
 	 */
 	public final void sendClose(int code, String message) throws IOException {
 		byte[] messageBytes = message.getBytes(UTF_8);
@@ -353,8 +352,8 @@ public abstract class Websocket implements Runnable {
 
 	private synchronized void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
 			throws IOException {
-		if (sentClose) {
-			throw new WebsocketProtocolException("further data cannot be sent after a close");
+		if (connectionClosed) {
+			throw new ConnectionClosedException();
 		}
 		OutputStream out = getOutputStream();
 		out.write((fin ? FIN_BIT : 0) | opcode);
@@ -376,6 +375,9 @@ public abstract class Websocket implements Runnable {
 		out.flush();
 		if (opcode == CLOSE) {
 			sentClose = true;
+			if (receivedClose) {
+				closeConnection();
+			}
 		}
 	}
 
@@ -383,10 +385,6 @@ public abstract class Websocket implements Runnable {
 		for (int i = 0; i < byteCount; i++) {
 			out.write((int) (bytes >> (Byte.SIZE * (byteCount - i - 1))));
 		}
-	}
-
-	public final boolean isClosed() {
-		return receivedClose;
 	}
 
 }
