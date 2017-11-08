@@ -1,16 +1,35 @@
 package gateway.websocket;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public abstract class BlockingWebsocket extends Websocket {
+public class BlockingWebsocket extends Websocket {
 
-	public BlockingWebsocket() {
-		queue = new LinkedBlockingQueue<>();
+	private final Socket socket;
+	private BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+
+	public BlockingWebsocket(Socket socket) {
+		this.socket = socket;
 	}
 
-	private BlockingQueue<String> queue;
+	@Override
+	protected OutputStream getOutputStream() throws IOException {
+		return socket.getOutputStream();
+	}
+
+	@Override
+	protected InputStream getInputStream() throws IOException {
+		return socket.getInputStream();
+	}
+
+	@Override
+	protected void closeConnection() throws IOException {
+		socket.close();
+	}
 
 	@Override
 	protected void onMessage(String text) {
@@ -20,25 +39,19 @@ public abstract class BlockingWebsocket extends Websocket {
 	@Override
 	protected void onMessage(byte[] bytes) {
 		try {
-			sendClose(1003, "This websocket only accepts text data.");
+			sendClose(1008);
 		} catch (IOException e) {
-			// ???
-		}
-	}
 
-	public String next() throws InterruptedException {
-		return queue.take();
+		}
 	}
 
 	@Override
 	protected void onClose(int code, String message) {
-		queue.add(null);
+		queue.add(code + ": " + message);
 	}
 
-	public static class Message {
-		public enum Type {
-			TEXT, BINARY, CLOSE;
-		}
+	public String getMessage() throws InterruptedException {
+		return queue.take();
 	}
 
 }

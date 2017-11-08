@@ -39,18 +39,17 @@ public class HttpDateTimeFormat {
 	}
 
 	/**
-	 * Returns the last modified time of the file as a DateTime, rounding the
-	 * seconds field down (effectively setting the milliseconds field to 0).
-	 * This provides interoperability with the {@code If-Modified-Since} header,
-	 * which does not retain the precision of milliseconds.
+	 * Returns the last modified time of the file as a DateTime rounded down to
+	 * the second. This provides interoperability with the
+	 * {@code If-Modified-Since} header, which does not retain the precision of
+	 * milliseconds.
 	 * 
 	 * @param file the location of the file
 	 * @return the last modified time of the file
 	 * @throws IOException if an I/O error occurs
 	 */
 	public static DateTime getLastModifiedTime(Path file) throws IOException {
-		return new DateTime(Files.getLastModifiedTime(file).toMillis())
-				.secondOfMinute().roundFloorCopy();
+		return new DateTime(Files.getLastModifiedTime(file).toMillis()).withMillisOfSecond(0);
 	}
 
 	public static String hashMd5(InputStream in) throws IOException {

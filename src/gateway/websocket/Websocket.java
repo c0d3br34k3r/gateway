@@ -28,6 +28,15 @@ public abstract class Websocket implements Runnable {
 	protected abstract InputStream getInputStream() throws IOException;
 
 	/**
+	 * This method is called when a close message has been both sent and
+	 * received (in either order). This method must close the underlying
+	 * connection.
+	 * 
+	 * @throws IOException
+	 */
+	protected abstract void closeConnection() throws IOException;
+
+	/**
 	 * This method is called when a message containing text is received.
 	 * 
 	 * @param text the text content of the message
@@ -49,6 +58,8 @@ public abstract class Websocket implements Runnable {
 	 *        was present
 	 */
 	protected void onClose(int code, String message) {}
+
+	protected void onPong(byte[] payload) {}
 
 	// Opcodes
 	public static final int CONTINUATION = 0x0;
@@ -78,14 +89,66 @@ public abstract class Websocket implements Runnable {
 
 	private static final int NO_STATUS_CODE = 1005;
 
+	private static final int DEFAULT_BUFFER_SIZE = 0x1000;
+
 	private CharsetOutputStream currentMessage = new CharsetOutputStream();
 	private boolean inProgress; // = false
 	private int messageType;
 
-	private boolean receivedClose; // = false
 	private boolean sentClose; // = false
 
-	private static final int DEFAULT_BUFFER_SIZE = 0x1000;
+	private final Object writeLock = new Object();
+
+	@Override
+	public void run() {
+		for (;;) {
+			try {
+				InputStream in = getInputStream();
+				int finOpcode = in.read();
+				if (finOpcode == -1) {
+					throw new IOException();
+				}
+				boolean fin = (finOpcode & FIN_BIT) == FIN_BIT;
+				int opcode = finOpcode & OPCODE_MASK;
+				int payloadSize = readLength(in);
+				byte[] masks = readBytes(in, MASKS_LENGTH);
+				byte[] payload = readBytes(in, payloadSize);
+				for (int i = 0; i < payloadSize; i++) {
+					payload[i] ^= masks[i % MASKS_LENGTH];
+				}
+				if (!inProgress && opcode == CONTINUATION) {
+					throw new WebsocketProtocolException("unstarted continuation");
+				}
+				if (fin) {
+					handleFinished(opcode, payload);
+				} else {
+					handleUnfinished(opcode, payload);
+				}
+				if (opcode == CLOSE) {
+					break;
+				}
+			} catch (WebsocketProtocolException e) {
+				try {
+					sendClose(1002, e.getMessage());
+					handleException(e);
+				} catch (IOException e1) {
+					handleException(e1);
+				}
+			} catch (IOException e) {
+				handleException(e);
+			}
+		}
+	}
+
+	private void handleException(IOException e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	private void handleException(WebsocketProtocolException e) {
+		// TODO Auto-generated method stub
+
+	}
 
 	/**
 	 * Reads a frame from the InputStream, and handles it appropriately,
@@ -116,31 +179,8 @@ public abstract class Websocket implements Runnable {
 	 *         received
 	 *         </ul>
 	 */
-	protected final void handleNextMessage() throws IOException {
-		InputStream in = getInputStream();
-		boolean fin;
-		do {
-			int finOpcode = in.read();
-			if (finOpcode == -1) {
-				throw new IOException();
-			}
-			fin = (finOpcode & FIN_BIT) == FIN_BIT;
-			int opcode = finOpcode & OPCODE_MASK;
-			int payloadSize = readLength(in);
-			byte[] masks = readBytes(in, MASKS_LENGTH);
-			byte[] payload = readBytes(in, payloadSize);
-			for (int i = 0; i < payloadSize; i++) {
-				payload[i] ^= masks[i % MASKS_LENGTH];
-			}
-			if (!inProgress && opcode == CONTINUATION) {
-				throw new WebsocketProtocolException("unstarted continuation");
-			}
-			if (fin) {
-				handleFinished(opcode, payload);
-			} else {
-				handleUnfinished(opcode, payload);
-			}
-		} while (!fin);
+	private final void handleNextMessage() throws IOException {
+
 	}
 
 	private void handleUnfinished(int opcode, byte[] payload) throws IOException {
@@ -152,8 +192,7 @@ public abstract class Websocket implements Runnable {
 			case CONTINUATION:
 				break;
 			default:
-				throw new WebsocketProtocolException(
-						"opcode " + opcode + " must have fin set or is unknown");
+				throw new WebsocketProtocolException("bad opcode: " + opcode);
 		}
 		inProgress = true;
 		currentMessage.write(payload);
@@ -174,13 +213,13 @@ public abstract class Websocket implements Runnable {
 				handlePing(payload);
 				break;
 			case PONG:
-				// do nothing
+				onPong(payload);
 				break;
 			case CLOSE:
 				handleClose(payload);
 				break;
 			default:
-				throw new WebsocketProtocolException("unknown opcode: " + opcode);
+				throw new WebsocketProtocolException("bad opcode: " + opcode);
 		}
 		inProgress = false;
 	}
@@ -203,11 +242,11 @@ public abstract class Websocket implements Runnable {
 	}
 
 	private void handleClose(byte[] payload) throws IOException {
-		receivedClose = true;
-		synchronized (this) {
+		synchronized (writeLock) {
 			if (!sentClose) {
 				sendClose(payload);
 			}
+			closed = true;
 			closeConnection();
 		}
 		int code;
@@ -350,33 +389,32 @@ public abstract class Websocket implements Runnable {
 		sendFrame(fin, opcode, message, 0, message.length);
 	}
 
-	private synchronized void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
+	private void sendFrame(boolean fin, int opcode, byte[] message, int off, int len)
 			throws IOException {
-		if (connectionClosed) {
-			throw new ConnectionClosedException();
-		}
-		OutputStream out = getOutputStream();
-		out.write((fin ? FIN_BIT : 0) | opcode);
-		int lengthCode;
-		int lengthBytes;
-		if (message.length <= SMALL_MESSAGE_MAX_SIZE) {
-			lengthCode = message.length;
-			lengthBytes = 0;
-		} else if (message.length <= MID_MESSAGE_MAX_SIZE) {
-			lengthCode = MID_LENGTH_CODE;
-			lengthBytes = MID_LENGTH_BYTES;
-		} else {
-			lengthCode = LARGE_LENGTH_CODE;
-			lengthBytes = LARGE_LENGTH_BYTES;
-		}
-		out.write(lengthCode);
-		writeAsBytes(out, len, lengthBytes);
-		out.write(message, off, len);
-		out.flush();
-		if (opcode == CLOSE) {
-			sentClose = true;
-			if (receivedClose) {
-				closeConnection();
+		synchronized (writeLock) {
+			if (sentClose || closed) {
+				throw new ConnectionClosedException();
+			}
+			OutputStream out = getOutputStream();
+			out.write((fin ? FIN_BIT : 0) | opcode);
+			int lengthCode;
+			int lengthBytes;
+			if (message.length <= SMALL_MESSAGE_MAX_SIZE) {
+				lengthCode = message.length;
+				lengthBytes = 0;
+			} else if (message.length <= MID_MESSAGE_MAX_SIZE) {
+				lengthCode = MID_LENGTH_CODE;
+				lengthBytes = MID_LENGTH_BYTES;
+			} else {
+				lengthCode = LARGE_LENGTH_CODE;
+				lengthBytes = LARGE_LENGTH_BYTES;
+			}
+			out.write(lengthCode);
+			writeAsBytes(out, len, lengthBytes);
+			out.write(message, off, len);
+			out.flush();
+			if (opcode == CLOSE) {
+				sentClose = true;
 			}
 		}
 	}

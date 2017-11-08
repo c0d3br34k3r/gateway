@@ -32,7 +32,7 @@ public abstract class WebsocketServer implements Closeable {
 	private static final String CRLF = "\r\n";
 	private static final String WEBSOCKET_KEY = "Sec-WebSocket-Key";
 
-	public final Websocket4 accept() throws IOException {
+	public final Websocket accept() throws IOException {
 		Socket socket = server.accept();
 		HttpReader in = new HttpReader(socket.getInputStream());
 		String requestLine = in.readLine();
@@ -44,7 +44,7 @@ public abstract class WebsocketServer implements Closeable {
 		}
 		String acceptKey =
 				BASE64.encode(Hashing.sha1().hashString(key + WEBSOCKET_GUID, US_ASCII).asBytes());
-		String reply = HttpStatus._101_SWITCHING_PROTOCOLS + CRLF
+		String reply = "HTTP/1.1 " + HttpStatus._101_SWITCHING_PROTOCOLS + CRLF
 				+ HttpHeaders.UPGRADE + ": websocket" + CRLF
 				+ HttpHeaders.CONNECTION + ": Upgrade" + CRLF
 				+ "Sec-WebSocket-Accept: " + acceptKey + CRLF
@@ -55,10 +55,11 @@ public abstract class WebsocketServer implements Closeable {
 		return createWebsocket(socket, requestUri, headers);
 	}
 
-	protected abstract Websocket4 createWebsocket(Socket socket, String uri,
+	protected abstract Websocket createWebsocket(Socket socket, String uri,
 			Map<String, String> headers);
 
-	@Override public void close() throws IOException {
+	@Override
+	public void close() throws IOException {
 		server.close();
 	}
 
