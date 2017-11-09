@@ -95,6 +95,7 @@ public abstract class Websocket implements Runnable {
 	private boolean inProgress; // = false
 	private int messageType;
 
+	private boolean closed; // = false
 	private boolean sentClose; // = false
 
 	private final Object writeLock = new Object();
@@ -375,6 +376,10 @@ public abstract class Websocket implements Runnable {
 		payloadBytes[1] = (byte) (code & 0xFF);
 		System.arraycopy(messageBytes, 0, payloadBytes, 2, messageBytes.length);
 		sendClose(payloadBytes);
+	}
+
+	final void sendPing(byte[] message) throws IOException {
+		sendFrame(true, PING, message);
 	}
 
 	private void sendClose(byte[] message) throws IOException {

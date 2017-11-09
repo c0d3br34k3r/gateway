@@ -41,12 +41,18 @@ public class WebsocketTest {
 					protected void onMessage(String text) {
 						System.out.println(text);
 						try {
-							send(new StringBuilder(text).reverse().toString());
+							sendClose(1008, "what the fuck");
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
+
+					@Override
+					protected void onPong(byte[] payload) {
+						System.out.println("PONG:" + new String(payload));
+					}
+
 				};
 				return websocket;
 			}
