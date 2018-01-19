@@ -1,5 +1,6 @@
 package gateway;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -20,13 +21,43 @@ public class HttpReader {
 		StringBuilder builder = new StringBuilder();
 		for (;;) {
 			int b = in.read();
-			if (b == '\r') {
+			switch (b) {
+			case '\r':
 				if (in.read() != '\n') {
 					throw new IOException();
 				}
 				return builder.toString();
-			} else if (b == -1) {
-				throw new IOException();
+			case -1:
+				throw new EOFException();
+			default:
+				builder.append((char) b);
+			}
+		}
+	}
+
+	public String readTo(char separator) throws IOException {
+		StringBuilder builder = new StringBuilder();
+		for (;;) {
+			int b = in.read();
+			if (b == separator) {
+				return builder.toString();
+			}
+			if (b == -1) {
+				throw new EOFException();
+			}
+			builder.append((char) b);
+		}
+	}
+	
+	public Map<String, String> parseHeaders(char separator) throws IOException {
+		StringBuilder builder = new StringBuilder();
+		for (;;) {
+			int b = in.read();
+			if (b == separator) {
+				return builder.toString();
+			}
+			if (b == -1) {
+				throw new EOFException();
 			}
 			builder.append((char) b);
 		}
@@ -60,7 +91,7 @@ public class HttpReader {
 			}
 			int result = in.read();
 			if (result != -1) {
-				--remaining;
+				remaining--;
 			}
 			return result;
 		}

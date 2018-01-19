@@ -22,7 +22,7 @@ import com.google.common.net.MediaType;
 
 public class HttpResponse {
 
-	private String status;
+	private HttpStatus status;
 	private Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	private Content content = NO_CONTENT;
 	private List<String> cookies = new ArrayList<>();
@@ -33,7 +33,7 @@ public class HttpResponse {
 	}
 
 	public HttpResponse setStatus(HttpStatus status) {
-		this.status = status.toString();
+		this.status = status;
 		return this;
 	}
 
@@ -108,7 +108,9 @@ public class HttpResponse {
 
 	void send(OutputStream out) throws IOException {
 		StringBuilder builder = new StringBuilder();
-		builder.append(VERSION).append(' ').append(status).append(CRLF);
+		builder.append(VERSION).append(' ')
+				.append(status.code()).append(' ')
+				.append(status.title()).append(CRLF);
 		for (Entry<String, String> header : headers.entrySet()) {
 			appendHeader(builder, header.getKey(), header.getValue());
 		}

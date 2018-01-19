@@ -27,7 +27,7 @@ public class HttpRequest {
 	private String query;
 	private String httpVersion;
 	private Map<String, String> headers = new LinkedHashMap<>();
-	private Map<String, String> cookies = Collections.emptyMap();
+	private Map<String, String> cookies; // = null
 	private InputStream content;
 
 	private HttpRequest() {}
@@ -48,12 +48,7 @@ public class HttpRequest {
 			TokenParser header = new TokenParser(line);
 			String key = header.getNext(':').trim();
 			String value = header.remainder().trim();
-
-			if (key.equals(HttpHeaders.COOKIE)) {
-				cookies = parseCookies(value);
-			} else {
-				headers.put(key, value);
-			}
+			headers.put(key, value);
 		}
 		Integer contentLength = contentLength();
 		if (contentLength != null) {
@@ -76,15 +71,6 @@ public class HttpRequest {
 			path = requestUri.substring(0, queryIndex);
 			query = requestLine.substring(queryIndex + 1);
 		}
-	}
-
-	private Map<String, String> parseCookies(String value) {
-		Map<String, String> cookies = new LinkedHashMap<>();
-		TokenParser parser = new TokenParser(value);
-		while (parser.hasNext()) {
-			cookies.put(parser.getNext('='), parser.getNext(';'));
-		}
-		return cookies;
 	}
 
 	public HttpMethod method() {
@@ -129,6 +115,14 @@ public class HttpRequest {
 	}
 
 	public Map<String, String> cookies() {
+		if (cookies == null) {
+			String cookie = getHeader(HttpHeaders.COOKIE);
+			if (cookie == null) {
+				cookies = Collections.emptyMap();
+			} else {
+				cookies = Splitter.on(';').trimResults().withKeyValueSeparator('=').split(cookie);
+			}
+		}
 		return cookies;
 	}
 

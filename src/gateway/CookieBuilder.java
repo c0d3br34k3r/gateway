@@ -10,16 +10,16 @@ import com.google.common.base.Joiner;
 
 public class CookieBuilder {
 
-	public static final String EXPIRES = "Expires";
-	public static final String MAX_AGE = "Max-Age";
-	public static final String DOMAIN = "Domain";
-	public static final String PATH = "Path";
-	public static final String SECURE = "Secure";
-	public static final String HTTP_ONLY = "HttpOnly";
+	private static final String EXPIRES = "Expires";
+	private static final String MAX_AGE = "Max-Age";
+	private static final String DOMAIN = "Domain";
+	private static final String PATH = "Path";
+	private static final String SECURE = "Secure";
+	private static final String HTTP_ONLY = "HttpOnly";
 
-	public static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
-	public static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
-	public static final CharMatcher ATTRIBUTE = asciiExceptFor(";");
+	private static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
+	private static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
+	private static final CharMatcher ATTRIBUTE = asciiExceptFor(";");
 
 	private static CharMatcher asciiExceptFor(String disallowed) {
 		return CharMatcher.inRange('\u0020', '\u007E')
