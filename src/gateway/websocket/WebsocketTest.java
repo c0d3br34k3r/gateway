@@ -12,52 +12,58 @@ public class WebsocketTest {
 		WebsocketServer server = new WebsocketServer(3637) {
 
 			@Override
-			protected Websocket createWebsocket(final Socket socket, String uri,
-					Map<String, String> headers) {
+			protected AbstractWebsocket createWebsocket(final Socket socket, String uri,
+					Map<String, String> headers) throws IOException {
 				System.out.println("opened");
-				final Websocket websocket = new Websocket() {
+				final AbstractWebsocket websocket =
+						new AbstractWebsocket(socket.getInputStream(), socket.getOutputStream()) {
 
-					@Override
-					protected OutputStream getOutputStream() throws IOException {
-						return socket.getOutputStream();
-					}
+							@Override
+							protected void onClose(int code, String message) {
+								System.err.println(code + ": " + message);
+							}
 
-					@Override
-					protected InputStream getInputStream() throws IOException {
-						return socket.getInputStream();
-					}
+							@Override
+							protected void closeConnection() throws IOException {
+								// socket.close();
+							}
 
-					@Override
-					protected void onClose(int code, String message) {
-						System.err.println(code + ": " + message);
-					}
+							@Override
+							protected void onMessage(String text) {
+								System.out.println(text);
+								try {
+									sendClose(1008, "what the fuck");
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
 
-					@Override
-					protected void closeConnection() throws IOException {
-						// socket.close();
-					}
+							@Override
+							protected void onPong(byte[] payload) {
+								System.out.println("PONG:" + new String(payload));
+							}
 
-					@Override
-					protected void onMessage(String text) {
-						System.out.println(text);
-						try {
-							sendClose(1008, "what the fuck");
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
+							@Override
+							protected boolean isClosed() {
+								return socket.isClosed();
+							}
 
-					@Override
-					protected void onPong(byte[] payload) {
-						System.out.println("PONG:" + new String(payload));
-					}
+							@Override
+							protected void handleException(IOException e) {
+								e.printStackTrace();
+							}
 
-				};
+							@Override
+							protected void handleException(WebsocketProtocolException e) {
+								e.printStackTrace();
+							}
+
+						};
 				return websocket;
 			}
 		};
-		Websocket accept = server.accept();
+		AbstractWebsocket accept = server.accept();
 		accept.run();
 	}
 

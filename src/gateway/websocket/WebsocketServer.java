@@ -32,7 +32,7 @@ public abstract class WebsocketServer implements Closeable {
 	private static final String CRLF = "\r\n";
 	private static final String WEBSOCKET_KEY = "Sec-WebSocket-Key";
 
-	public final Websocket accept() throws IOException {
+	public final AbstractWebsocket accept() throws IOException {
 		Socket socket = server.accept();
 		HttpReader in = new HttpReader(socket.getInputStream());
 		String requestLine = in.readLine();
@@ -55,8 +55,8 @@ public abstract class WebsocketServer implements Closeable {
 		return createWebsocket(socket, requestUri, headers);
 	}
 
-	protected abstract Websocket createWebsocket(Socket socket, String uri,
-			Map<String, String> headers);
+	protected abstract AbstractWebsocket createWebsocket(Socket socket, String uri,
+			Map<String, String> headers) throws IOException;
 
 	@Override
 	public void close() throws IOException {

@@ -16,6 +16,7 @@ public class CookieBuilder {
 	private static final String PATH = "Path";
 	private static final String SECURE = "Secure";
 	private static final String HTTP_ONLY = "HttpOnly";
+	private static final DateTime INVALIDATE = new DateTime(0L);
 
 	private static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
 	private static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
@@ -29,12 +30,12 @@ public class CookieBuilder {
 	private final String name;
 	private final String value;
 
-	private DateTime expires = null;
-	private int maxAge = 0;
-	private String domain = null;
-	private String path = null;
-	private boolean secure = false;
-	private boolean httpOnly = false;
+	private DateTime expires; // = null
+	private int maxAge; // = 0
+	private String domain; // = null
+	private String path; // = null
+	private boolean secure; // = false
+	private boolean httpOnly; // = false
 	private List<String> extensions = new ArrayList<>();
 
 	public CookieBuilder(String name, String value) {
@@ -61,7 +62,7 @@ public class CookieBuilder {
 	}
 
 	public CookieBuilder invalidate() {
-		this.expires = new DateTime(0L);
+		this.expires = INVALIDATE;
 		return this;
 	}
 

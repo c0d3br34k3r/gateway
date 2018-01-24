@@ -7,23 +7,14 @@ import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class BlockingWebsocket extends Websocket {
+public class BlockingWebsocket extends AbstractWebsocket {
 
 	private final Socket socket;
 	private BlockingQueue<String> queue = new LinkedBlockingQueue<>();
 
-	public BlockingWebsocket(Socket socket) {
+	public BlockingWebsocket(Socket socket) throws IOException {
+		super(socket.getInputStream(), socket.getOutputStream());
 		this.socket = socket;
-	}
-
-	@Override
-	protected OutputStream getOutputStream() throws IOException {
-		return socket.getOutputStream();
-	}
-
-	@Override
-	protected InputStream getInputStream() throws IOException {
-		return socket.getInputStream();
 	}
 
 	@Override

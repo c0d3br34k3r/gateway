@@ -72,6 +72,7 @@ public class Gateway {
 		this.hidden = hidden;
 		this.aliases = aliases;
 		this.defaultHandler = defaultHandler;
+		Files.newDirectoryStream(dir, glob);
 	}
 
 	private void handleDirectory(Path dir, Iterator<String> path) {
