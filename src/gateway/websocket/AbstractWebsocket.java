@@ -2,6 +2,7 @@ package gateway.websocket;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -213,7 +214,11 @@ public abstract class AbstractWebsocket implements Runnable {
 	}
 
 	private static int readLength(InputStream in) throws IOException {
-		int lengthCode = in.read() & LENGTH_MASK;
+		int b = in.read();
+		if (b == -1) {
+			throw new EOFException();
+		}
+		int lengthCode = b & LENGTH_MASK;
 		switch (lengthCode) {
 		case MID_LENGTH_CODE:
 			return readInt(in, MID_LENGTH_BYTES);
@@ -228,6 +233,7 @@ public abstract class AbstractWebsocket implements Runnable {
 		int result = 0;
 		for (int i = 0; i < byteCount; i++) {
 			result |= in.read() << (Byte.SIZE * (byteCount - i - 1));
+			// TODO: EOFException
 		}
 		return result;
 	}
@@ -261,7 +267,7 @@ public abstract class AbstractWebsocket implements Runnable {
 			throws IOException {
 		int read = pushback.read(buffer);
 		int next = pushback.read();
-		boolean fin = next == -1;
+		boolean fin = (next == -1);
 		if (!fin) {
 			pushback.unread(next);
 		}
