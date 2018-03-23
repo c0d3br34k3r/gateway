@@ -18,6 +18,7 @@ public final class QueryParser {
 
 			@Override
 			public void put(String key, String value) {
+				// TODO: we can do this more cleanly with java 8
 				if (!map.containsKey(key)) {
 					map.put(key, value);
 				}
@@ -42,7 +43,6 @@ public final class QueryParser {
 	private static void parse(String query, MapBuilder builder) {
 		StringBuilder key = new StringBuilder();
 		StringBuilder value = new StringBuilder();
-
 		StringBuilder current = key;
 		int i = 0;
 		while (i < query.length()) {
@@ -53,6 +53,7 @@ public final class QueryParser {
 				break;
 			case '&':
 				builder.put(key.toString(), value.toString());
+				// TODO: new StringBuilder()?
 				key.setLength(0);
 				value.setLength(0);
 				current = key;
@@ -73,6 +74,7 @@ public final class QueryParser {
 	}
 
 	private interface MapBuilder {
+
 		void put(String key, String value);
 	}
 

@@ -3,8 +3,10 @@ package com.catascopic.gateway;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,6 +29,8 @@ public class Gateway {
 	private Map<String, String> aliases;
 	private Predicate<String> hidden;
 	private Handler defaultHandler;
+	
+	
 
 	private static final LoadingCache<Path, Gateway> CACHE =
 			CacheBuilder.newBuilder().build(new CacheLoader<Path, Gateway>() {
@@ -72,7 +76,15 @@ public class Gateway {
 		this.hidden = hidden;
 		this.aliases = aliases;
 		this.defaultHandler = defaultHandler;
-		Files.newDirectoryStream(dir, glob);
+		Files.newDirectoryStream(dir, glob)
+	}
+	
+	private static PathMatcher fromGlob(String glob, FileSystem fs) {
+		return fs.getPathMatcher("glob:" + fs);
+	}
+	
+	private static PathMatcher fromGlobs(List<String> globs, FileSystem fs) {
+		
 	}
 
 	private void handleDirectory(Path dir, Iterator<String> path) {

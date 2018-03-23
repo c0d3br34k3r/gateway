@@ -135,6 +135,7 @@ public enum HttpStatus {
 		this.title = message;
 	}
 
+	// TODO: int?
 	public String code() {
 		return code;
 	}

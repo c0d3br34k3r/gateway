@@ -11,6 +11,7 @@ class ContentInputStream extends InputStream {
 	private long remaining;
 
 	ContentInputStream(InputStream in, long limit) {
+		this.in = in;
 		this.remaining = limit;
 	}
 

@@ -11,7 +11,7 @@ public class HttpRequestParser {
 		this.version = readToLineEnd(reader);
 	}
 
-	String readUntil(Reader reader, char end) throws IOException {
+	static String readUntil(Reader reader, char end) throws IOException {
 		StringBuilder builder = new StringBuilder();
 		for (;;) {
 			int ch = reader.read();
@@ -22,7 +22,7 @@ public class HttpRequestParser {
 		}
 	}
 
-	String readToLineEnd(Reader reader) throws IOException {
+	static String readToLineEnd(Reader reader) throws IOException {
 		StringBuilder builder = new StringBuilder();
 		for (;;) {
 			int ch = reader.read();
