@@ -18,6 +18,8 @@ import com.google.common.io.ByteSource;
 
 public class HttpDateTimeFormat {
 
+	private static final String HTTP_1_1 = "HTTP/1.1";
+
 	private static final DateTimeFormatter FORMAT =
 			DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'")
 					.withZoneUTC().withLocale(Locale.US);
@@ -44,12 +46,15 @@ public class HttpDateTimeFormat {
 	 * {@code If-Modified-Since} header, which does not retain the precision of
 	 * milliseconds.
 	 * 
-	 * @param file the location of the file
+	 * @param file
+	 *            the location of the file
 	 * @return the last modified time of the file
-	 * @throws IOException if an I/O error occurs
+	 * @throws IOException
+	 *             if an I/O error occurs
 	 */
 	public static DateTime getLastModifiedTime(Path file) throws IOException {
-		return new DateTime(Files.getLastModifiedTime(file).toMillis()).withMillisOfSecond(0);
+		return new DateTime(Files.getLastModifiedTime(file).toMillis())
+				.withMillisOfSecond(0);
 	}
 
 	public static String hashMd5(InputStream in) throws IOException {

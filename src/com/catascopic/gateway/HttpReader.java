@@ -3,7 +3,10 @@ package com.catascopic.gateway;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.io.ByteStreams;
 
 /**
@@ -34,33 +37,19 @@ public class HttpReader {
 			}
 		}
 	}
-
-	public String readTo(char separator) throws IOException {
-		StringBuilder builder = new StringBuilder();
-		for (;;) {
-			int b = in.read();
-			if (b == separator) {
-				return builder.toString();
-			}
-			if (b == -1) {
-				throw new EOFException();
-			}
-			builder.append((char) b);
-		}
-	}
 	
-	public Map<String, String> parseHeaders(char separator) throws IOException {
-		StringBuilder builder = new StringBuilder();
+	public Map<String, String> parseHeaders() throws IOException {
+		Builder<String, String> builder = ImmutableMap.builder();
 		for (;;) {
-			int b = in.read();
-			if (b == separator) {
-				return builder.toString();
+			String line = readLine();
+			if (line.isEmpty()) {
+				break;
 			}
-			if (b == -1) {
-				throw new EOFException();
-			}
-			builder.append((char) b);
+			int separator = line.indexOf(':');
+			builder.put(line.substring(0, separator),
+					line.substring(separator + 1).trim());
 		}
+		return builder.build();
 	}
 
 	public InputStream streamContent(int count) {

@@ -1,15 +1,44 @@
 package com.catascopic.gateway;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ListMultimap;
 
-public final class QueryParser {
+public final class UriParser {
+	private UriParser() {}
 
-	private QueryParser() {}
+	public static List<String> parse(String query) {
+		List<String> parts = new ArrayList<>();
+		StringBuilder builder = new StringBuilder();
+		int i = 0;
+		while (i < query.length()) {
+			char c = query.charAt(i);
+			switch (c) {
+			case '/':
+				parts.add(builder.toString());
+				builder = new StringBuilder();
+				i++;
+				break;
+			case '%':
+				builder.append((char) Integer.parseInt(
+						query.substring(i + 1, i + 3), 16));
+				i += 3;
+				break;
+			default:
+				builder.append(c);
+				i++;
+			}
+		}
+		if (builder.length() > 0) {
+			parts.add(builder.toString());
+		}
+		return parts;
+	}
 
 	public static Map<String, String> toMap(String query) {
 		// So we don't crash on duplicate keys
@@ -62,7 +91,8 @@ public final class QueryParser {
 				current.append(' ');
 				break;
 			case '%':
-				current.append((char) Integer.parseInt(query.substring(i + 1, i + 3), 16));
+				current.append((char) Integer.parseInt(
+						query.substring(i + 1, i + 3), 16));
 				i += 2;
 				break;
 			default:

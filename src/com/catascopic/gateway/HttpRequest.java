@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +12,10 @@ import java.util.Map;
 import org.joda.time.DateTime;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
@@ -26,43 +29,33 @@ public class HttpRequest {
 	private String path;
 	private String query;
 	private String httpVersion;
-	private Map<String, String> headers = new LinkedHashMap<>();
+	private Map<String, String> headers;
 	private Map<String, String> cookies; // = null
+	private Map<String, String> trailers; // = null
 	private InputStream content;
 
-	private HttpRequest() {}
+	private HttpReader reader;
 
-	static HttpRequest read(InputStream in) throws IOException {
-		HttpRequest req = new HttpRequest();
-		req.read(new HttpReader(in));
-		return req;
-	}
-
-	void read(HttpReader input) throws IOException {
-		parseRequestLine(input.readLine());
-		for (;;) {
-			String line = input.readLine();
-			if (line.isEmpty()) {
-				break;
-			}
-			TokenParser header = new TokenParser(line);
-			String key = header.getNext(':').trim();
-			String value = header.remainder().trim();
-			headers.put(key, value);
-		}
+	private HttpRequest(HttpReader reader) throws IOException,
+			HttpSyntaxException {
+		parseRequestLine(reader.readLine());
+		headers = reader.parseHeaders();
 		Integer contentLength = contentLength();
 		if (contentLength != null) {
-			content = input.streamContent(contentLength);
+			content = reader.streamContent(contentLength);
 		} else if (CHUNKED.equals(headers.get(HttpHeaders.TRANSFER_ENCODING))) {
-			content = input.streamChunked();
+			content = reader.streamChunked();
 		}
 	}
 
-	private void parseRequestLine(String requestLine) {
-		Iterator<String> requestParts = Splitter.on(' ').split(requestLine).iterator();
-		method = HttpMethod.valueOf(requestParts.next());
-		requestUri = requestParts.next();
-		httpVersion = requestParts.next();
+	private void parseRequestLine(String requestLine)
+			throws HttpSyntaxException {
+		List<String> requestParts = Splitter.on(' ').splitToList(requestLine);
+		method = HttpMethod.valueOf(requestParts.get(0));
+		requestUri = requestParts.get(1);
+		if (requestParts.get(2).equals(HTTP_1_1)) {
+			throw new HttpSyntaxException();
+		}
 		int queryIndex = requestUri.indexOf('?');
 		if (queryIndex == -1) {
 			path = requestUri;
@@ -77,6 +70,10 @@ public class HttpRequest {
 		return method;
 	}
 
+	public String requestUri() {
+		return requestUri;
+	}
+
 	public String path() {
 		return path;
 	}
@@ -86,19 +83,20 @@ public class HttpRequest {
 	}
 
 	public List<String> parsePath() {
-		return PathParser.parse(path);
+		return UriParser.parse(path);
 	}
 
 	public Map<String, String> parseQuery() {
-		return QueryParser.toMap(query);
+		return UriParser.toMap(query);
 	}
 
 	public Multimap<String, String> parseQueryAsMultimap() {
-		return QueryParser.toMultimap(query);
+		return UriParser.toMultimap(query);
 	}
 
 	public String httpVersion() {
-		return httpVersion;
+		// TODO: ???
+		return HTTP_1_1;
 	}
 
 	public String getHeader(String key) {
@@ -117,13 +115,16 @@ public class HttpRequest {
 	public Map<String, String> cookies() {
 		if (cookies == null) {
 			String cookie = getHeader(HttpHeaders.COOKIE);
-			if (cookie == null) {
-				cookies = Collections.emptyMap();
-			} else {
-				cookies = Splitter.on(';').trimResults().withKeyValueSeparator('=').split(cookie);
-			}
+			cookies = cookie == null
+					? Collections.emptyMap()
+					: Splitter.on(';').trimResults()
+							.withKeyValueSeparator('=').split(cookie);
 		}
 		return cookies;
+	}
+
+	public Map<String, String> trailers() {
+
 	}
 
 	public boolean hasContent() {
@@ -159,7 +160,7 @@ public class HttpRequest {
 
 	@Override
 	public String toString() {
-		return method + " " + requestUri + " " + httpVersion;
+		return String.format("%s %s %s", method, requestUri, httpVersion);
 	}
 
 }
