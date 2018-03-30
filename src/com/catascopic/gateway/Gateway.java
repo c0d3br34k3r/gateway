@@ -76,7 +76,7 @@ public class Gateway {
 		this.hidden = hidden;
 		this.aliases = aliases;
 		this.defaultHandler = defaultHandler;
-		Files.newDirectoryStream(dir, glob)
+		Files.newDirectoryStream(dir, fromGlob("", null));
 	}
 	
 	private static PathMatcher fromGlob(String glob, FileSystem fs) {

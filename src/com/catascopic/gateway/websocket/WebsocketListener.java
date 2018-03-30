@@ -1,19 +1,19 @@
 package com.catascopic.gateway.websocket;
 
-public interface WebsocketListener {
+public abstract class WebsocketListener {
 
-	void onOpen(Websocket websocket);
+	protected void onOpen(Websocket websocket) {}
 
-	void onBinary(byte[] bytes);
+	protected void onBinary(byte[] bytes) {}
 
-	void onText(String text);
+	protected void onText(String text) {}
 
-	void onClose(int code, String message);
+	protected void onClose(int code, String message) {}
 
-	void onError(Throwable error);
+	protected void onError(Throwable error) {}
 
-	void onPing(byte[] payload);
+	protected void onPing(byte[] payload) {}
 
-	void onPong(byte[] payload);
+	protected void onPong(byte[] payload) {}
 
 }
