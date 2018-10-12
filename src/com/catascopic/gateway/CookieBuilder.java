@@ -18,7 +18,8 @@ public class CookieBuilder {
 	private static final String HTTP_ONLY = "HttpOnly";
 	private static final DateTime INVALIDATE = new DateTime(0L);
 
-	private static final CharMatcher NAME = asciiExceptFor(" \"(),/:;<=>?@[\\]{}");
+	private static final CharMatcher NAME = asciiExceptFor(
+			" \"(),/:;<=>?@[\\]{}");
 	private static final CharMatcher VALUE = asciiExceptFor(" \",;\\");
 	private static final CharMatcher ATTRIBUTE = asciiExceptFor(";");
 
@@ -51,7 +52,8 @@ public class CookieBuilder {
 	private static String checkChars(String s, CharMatcher matcher) {
 		if (!matcher.matchesAllOf(s)) {
 			throw new IllegalArgumentException(
-					String.format("invalid chars %s in %s", matcher.retainFrom(s), s));
+					String.format("invalid chars %s in %s",
+							matcher.retainFrom(s), s));
 		}
 		return s;
 	}
@@ -68,7 +70,8 @@ public class CookieBuilder {
 
 	public CookieBuilder setMaxAge(int maxAge) {
 		if (maxAge < 1) {
-			throw new IllegalArgumentException("Max-Age must be greater than 0");
+			throw new IllegalArgumentException(
+					"Max-Age must be greater than 0");
 		}
 		this.maxAge = maxAge;
 		return this;
@@ -95,7 +98,8 @@ public class CookieBuilder {
 	}
 
 	public CookieBuilder addExtension(String name, String value) {
-		extensions.add(checkChars(name, ATTRIBUTE) + '=' + checkChars(value, ATTRIBUTE));
+		extensions.add(checkChars(name, ATTRIBUTE) + '=' + checkChars(value,
+				ATTRIBUTE));
 		return this;
 	}
 
@@ -131,7 +135,8 @@ public class CookieBuilder {
 		return JOINER.join(parts);
 	}
 
-	private static void addProperty(List<String> parts, String key, Object value) {
+	private static void addProperty(List<String> parts, String key,
+			Object value) {
 		parts.add(key + '=' + value);
 	}
 

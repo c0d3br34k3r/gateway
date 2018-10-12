@@ -227,8 +227,11 @@ abstract class Websocket implements Runnable, Closeable {
 			throws IOException {
 		int result = 0;
 		for (int i = 0; i < byteCount; i++) {
-			result |= in.read() << (Byte.SIZE * (byteCount - i - 1));
-			// TODO: EOFException
+			int b = in.read();
+			if (b == -1) {
+				throw new EOFException();
+			}
+			result |= b << (Byte.SIZE * (byteCount - i - 1));
 		}
 		return result;
 	}
