@@ -13,7 +13,7 @@ public class RegularFileHandler extends Handler {
 	@Override
 	public void get(Path file, HttpRequest request, HttpResponse response) throws IOException {
 		if (!Files.exists(file)) {
-			new _404Handler().get(file, request, response);
+			_404Handler.INSTANCE.get(file, request, response);
 			return;
 		}
 		DateTime modifiedTime = HttpDateTimeFormat.getLastModifiedTime(file);

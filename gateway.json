@@ -1,0 +1,21 @@
+{
+	"lookup" : [{
+			"path" : "!!!",
+			"file" : "ExclamationMarks.txt"
+		}
+	],
+
+	"match" : [{
+			"pattern" : ".*\\.jpe?g",
+			"handler" : "gateway.ImageHandler"
+		}
+	],
+
+	"default" : {
+		"file" : "Not Found.html"
+	},
+
+	"properties" : {
+		"hideFilesByDefault" : false
+	}
+}

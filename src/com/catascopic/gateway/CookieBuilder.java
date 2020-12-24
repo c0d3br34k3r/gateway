@@ -48,6 +48,11 @@ public class CookieBuilder {
 		this(name, value);
 		this.expires = expires;
 	}
+	
+	public CookieBuilder(String name, String value, int maxAge) {
+		this(name, value);
+		setMaxAge(maxAge);
+	}
 
 	private static String checkChars(String s, CharMatcher matcher) {
 		if (!matcher.matchesAllOf(s)) {

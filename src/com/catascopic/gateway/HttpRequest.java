@@ -5,17 +5,12 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.joda.time.DateTime;
 
 import com.google.common.base.Splitter;
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
@@ -23,6 +18,7 @@ import com.google.common.net.HttpHeaders;
 public class HttpRequest {
 
 	private static final String CHUNKED = "Chunked";
+	private static final String HTTP1_1 = "HTTP/1.1";
 
 	private HttpMethod method;
 	private String requestUri;
@@ -53,7 +49,7 @@ public class HttpRequest {
 		List<String> requestParts = Splitter.on(' ').splitToList(requestLine);
 		method = HttpMethod.valueOf(requestParts.get(0));
 		requestUri = requestParts.get(1);
-		if (requestParts.get(2).equals(HTTP_1_1)) {
+		if (requestParts.get(2).equals(HTTP1_1)) {
 			throw new HttpSyntaxException();
 		}
 		int queryIndex = requestUri.indexOf('?');
@@ -95,8 +91,7 @@ public class HttpRequest {
 	}
 
 	public String httpVersion() {
-		// TODO: ???
-		return HTTP_1_1;
+		return HTTP1_1;
 	}
 
 	public String getHeader(String key) {
@@ -116,7 +111,7 @@ public class HttpRequest {
 		if (cookies == null) {
 			String cookie = getHeader(HttpHeaders.COOKIE);
 			cookies = cookie == null
-					? Collections.emptyMap()
+					? Collections.<String, String> emptyMap()
 					: Splitter.on(';').trimResults()
 							.withKeyValueSeparator('=').split(cookie);
 		}
@@ -124,7 +119,7 @@ public class HttpRequest {
 	}
 
 	public Map<String, String> trailers() {
-
+		return trailers;
 	}
 
 	public boolean hasContent() {

@@ -6,7 +6,7 @@ public class CacheControl {
 	
 	
 
-	private enum Cacheability {
+	public enum Cacheability {
 		PUBLIC,
 		PRIVATE,
 		NO_CACHE,

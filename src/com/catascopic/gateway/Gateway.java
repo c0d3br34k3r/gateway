@@ -7,20 +7,16 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
+import com.google.gson.stream.JsonReader;
 
 public class Gateway {
 
@@ -29,65 +25,21 @@ public class Gateway {
 	private Map<String, String> aliases;
 	private Predicate<String> hidden;
 	private Handler defaultHandler;
-	
-	
 
-	private static final LoadingCache<Path, Gateway> CACHE =
-			CacheBuilder.newBuilder().build(new CacheLoader<Path, Gateway>() {
+	private Gateway(Path dir) throws IOException {
 
-				@Override
-				public Gateway load(Path dir) throws Exception {
+		for (Path path : Files.newDirectoryStream(dir)) {
+			if (Files.isRegularFile(path)) {
 
-					Predicate<String> hidden;
-					Path hiddenPath = Paths.get(".gatewayhidden");
-					if (Files.isRegularFile(hiddenPath)) {
-						hidden = readHidden(hiddenPath);
-					} else {
-						hidden = Predicates.alwaysFalse();
-					}
+			} else if (Files.isDirectory(path)) {
 
-					Map<String, String> aliases;
-					Path aliasPath = Paths.get(".gatewayalias");
-					if (Files.isRegularFile(aliasPath)) {
-						aliases = readAlias(aliasPath);
-					} else {
-						aliases = Collections.emptyMap();
-					}
-
-					Handler defaultHandler;
-					Path handlerPath = Paths.get(".gateway");
-					if (Files.isRegularFile(aliasPath)) {
-						@SuppressWarnings("unchecked")
-						Class<? extends Handler> handlerClass =
-								(Class<? extends Handler>) Class.forName(new String(
-										Files.readAllBytes(handlerPath), StandardCharsets.UTF_8));
-						defaultHandler = handlerClass
-								.newInstance();
-					} else {
-						defaultHandler = new _404Handler();
-					}
-					return new Gateway(hidden, aliases, defaultHandler);
-				}
-
-			});
-
-	private Gateway(Predicate<String> hidden, Map<String, String> aliases,
-			Handler defaultHandler) {
-		this.hidden = hidden;
-		this.aliases = aliases;
-		this.defaultHandler = defaultHandler;
-		Files.newDirectoryStream(dir, fromGlob("", null));
+			}
+		}
 	}
-	
-	private static PathMatcher fromGlob(String glob, FileSystem fs) {
-		return fs.getPathMatcher("glob:" + fs);
-	}
-	
-	private static PathMatcher fromGlobs(List<String> globs, FileSystem fs) {
+
+	private void handleDirectory(Path dir, Iterator<String> path)
+			throws IOException {
 		
-	}
-
-	private void handleDirectory(Path dir, Iterator<String> path) {
 		String part = path.next();
 		String alias = aliases.get(part);
 		if (alias == null) {
@@ -140,10 +92,24 @@ public class Gateway {
 		return Predicates.and(filters);
 	}
 
-	private static Map<String, String> readAlias(Path aliasPath) throws IOException {
-		try (Reader reader = Files.newBufferedReader(aliasPath, StandardCharsets.UTF_8)) {
-			return new Gson().fromJson(reader, new TypeToken<Map<String, String>>() {}.getType());
+	private static Map<String, String> readAlias(Path aliasPath)
+			throws IOException {
+		try (Reader reader = Files.newBufferedReader(aliasPath,
+				StandardCharsets.UTF_8)) {
+			return readMap(reader);
 		}
+	}
+
+	private static Map<String, String> readMap(Reader reader)
+			throws IOException {
+		JsonReader json = new JsonReader(reader);
+		Builder<String, String> builder = ImmutableMap.builder();
+		json.beginObject();
+		while (json.hasNext()) {
+			builder.put(json.nextName(), json.nextString());
+		}
+		json.endObject();
+		return builder.build();
 	}
 
 }

@@ -1,10 +1,11 @@
 package com.catascopic.gateway;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.Iterator;
 
-public abstract class Handler {
+public interface Handler {
 
-	public abstract void get(Path file, HttpRequest request, HttpResponse response) throws IOException;
+	HttpResponse get(Iterator<String> path, HttpRequest request)
+			throws IOException;
 
 }

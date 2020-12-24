@@ -48,8 +48,10 @@ public final class UriParser {
 			@Override
 			public void put(String key, String value) {
 				// TODO: we can do this more cleanly with java 8
-				if (!map.containsKey(key)) {
-					map.put(key, value);
+				String prev = map.put(key, value);
+				if (prev != null) {
+					// whoops, put it back
+					map.put(key, prev);
 				}
 			}
 		});
@@ -82,9 +84,8 @@ public final class UriParser {
 				break;
 			case '&':
 				builder.put(key.toString(), value.toString());
-				// TODO: new StringBuilder()?
-				key.setLength(0);
-				value.setLength(0);
+				key = new StringBuilder();
+				value = new StringBuilder();
 				current = key;
 				break;
 			case '+':
@@ -97,8 +98,8 @@ public final class UriParser {
 				break;
 			default:
 				current.append(c);
+				i++;
 			}
-			i++;
 		}
 		builder.put(key.toString(), value.toString());
 	}
